@@ -4,14 +4,13 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    hmr: false,
+    hmr: false, // Desactivar HMR para evitar recargas al volver a la pestaña
     watch: {
       usePolling: false
     }
   },
-  // Eliminar la configuración de esbuild que causa la advertencia
-  // O usar solo una de las opciones
-  esbuild: {
-    logOverride: { 'this-is-undefined-in-esm': 'silent' }
+  build: {
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000
   }
 })

@@ -1,18 +1,27 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import { ThemeProvider } from './context/ThemeContext'
 import { Login } from './components/comunes/Login'
 import { Registro } from './components/estudiante/Registro'
-// IMPORTANTE: Importación por defecto (sin llaves)
 import DashboardEstudianteGamificado from './components/estudiante/DashboardEstudianteGamificado'
 import DashboardPadrino from './components/padrino/DashboardPadrino'
 import DashboardAdmin from './components/admin/DashboardAdmin'
 
+// 🔥 FIX: Wrapper para evitar remount del dashboard al cambiar de ruta interna
+function EstudianteLayout({ children }) {
+  const { user, rol } = useAuth()
+  
+  // Redirigir si no es estudiante autenticado
+  if (!user || rol !== 'estudiante') {
+    return <Navigate to="/login" replace />
+  }
+  
+  return <>{children}</>
+}
+
 function AppRoutes() {
   const { user, rol, loading } = useAuth()
-
-  console.log('📱 [AppRoutes] loading:', loading, 'user:', user?.email, 'rol:', rol)
 
   if (loading) {
     return (
@@ -27,19 +36,21 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-      <Route path="/registro" element={!user ? <Registro /> : <Navigate to="/" />} />
+      <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
+      <Route path="/registro" element={!user ? <Registro /> : <Navigate to="/" replace />} />
       
-      {/* Rutas del estudiante */}
-      <Route path="/" element={user && rol === 'estudiante' ? <DashboardEstudianteGamificado /> : <Navigate to="/login" />} />
-      <Route path="/perfil" element={user && rol === 'estudiante' ? <DashboardEstudianteGamificado /> : <Navigate to="/login" />} />
-      <Route path="/ranking" element={user && rol === 'estudiante' ? <DashboardEstudianteGamificado /> : <Navigate to="/login" />} />
-      <Route path="/insignias" element={user && rol === 'estudiante' ? <DashboardEstudianteGamificado /> : <Navigate to="/login" />} />
-      <Route path="/ayuda" element={user && rol === 'estudiante' ? <DashboardEstudianteGamificado /> : <Navigate to="/login" />} />
+      {/* 🔥 FIX: Usar EstudianteLayout para mantener el componente montado */}
+      <Route path="/" element={<EstudianteLayout><DashboardEstudianteGamificado /></EstudianteLayout>} />
+      <Route path="/perfil" element={<EstudianteLayout><DashboardEstudianteGamificado /></EstudianteLayout>} />
+      <Route path="/ranking" element={<EstudianteLayout><DashboardEstudianteGamificado /></EstudianteLayout>} />
+      <Route path="/insignias" element={<EstudianteLayout><DashboardEstudianteGamificado /></EstudianteLayout>} />
+      <Route path="/ayuda" element={<EstudianteLayout><DashboardEstudianteGamificado /></EstudianteLayout>} />
       
-      {/* Rutas de padrino y admin */}
-      <Route path="/padrino" element={user && rol === 'padrino' ? <DashboardPadrino /> : <Navigate to="/login" />} />
-      <Route path="/admin" element={user && rol === 'admin' ? <DashboardAdmin /> : <Navigate to="/login" />} />
+      <Route path="/padrino" element={user && rol === 'padrino' ? <DashboardPadrino /> : <Navigate to="/login" replace />} />
+      <Route path="/admin" element={user && rol === 'admin' ? <DashboardAdmin /> : <Navigate to="/login" replace />} />
+      
+      {/* Ruta por defecto */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
