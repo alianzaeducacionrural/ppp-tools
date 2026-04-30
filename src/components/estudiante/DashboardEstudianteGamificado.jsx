@@ -14,7 +14,9 @@ function DashboardEstudianteGamificado() {
   const navigate = useNavigate()
   const location = useLocation()
   
-  // 🔥 FIX: Refs para estabilizar dependencias y evitar re-ejecuciones
+  // ============================================
+  // REFS
+  // ============================================
   const userIdRef = useRef(user?.id)
   const lastLoadedUserId = useRef(null)
   
@@ -22,15 +24,15 @@ function DashboardEstudianteGamificado() {
     userIdRef.current = user?.id
   }, [user?.id])
   
-  // Intentar recuperar caché al iniciar
+  // ============================================
+  // RECUPERAR CACHÉ INICIAL
+  // ============================================
   const getInitialState = () => {
     try {
       const saved = sessionStorage.getItem('dashboard-cache')
       if (saved) {
         const cache = JSON.parse(saved)
-        // 🔥 FIX: Verificar que el caché sea del mismo usuario
         if (cache.estudiante?.user_id !== userIdRef.current) {
-          console.log('⚠️ Caché de otro usuario, descartando')
           sessionStorage.removeItem('dashboard-cache')
           return {
             cachedEstudiante: null,
@@ -39,7 +41,6 @@ function DashboardEstudianteGamificado() {
             cachedInitialLoadDone: false
           }
         }
-        // Verificar que el caché no tenga más de 1 hora
         if (cache.timestamp && Date.now() - cache.timestamp < 3600000) {
           console.log('📦 Caché recuperado del sessionStorage')
           return {
@@ -63,7 +64,9 @@ function DashboardEstudianteGamificado() {
 
   const { cachedEstudiante, cachedNiveles, cachedPuntuacion, cachedInitialLoadDone } = getInitialState()
   
-  // Estados principales
+  // ============================================
+  // ESTADOS PRINCIPALES
+  // ============================================
   const [estudiante, setEstudiante] = useState(cachedEstudiante)
   const [niveles, setNiveles] = useState(cachedNiveles || [])
   const [insignias, setInsignias] = useState([])
@@ -83,9 +86,8 @@ function DashboardEstudianteGamificado() {
   const cacheNiveles = useRef(cachedNiveles)
   const cacheEstudiante = useRef(cachedEstudiante)
   const isReturningToTab = useRef(false)
-  const saveTimeout = useRef(null)
 
-  // Determinar qué pestaña está activa según la URL
+  // Determinar pestaña activa
   const getActiveTab = () => {
     const path = location.pathname
     if (path === '/perfil') return 'perfil'
@@ -98,14 +100,15 @@ function DashboardEstudianteGamificado() {
   const activeTab = getActiveTab()
 
   // ============================================
-  // GUARDAR ESTADO EN SESSIONSTORAGE
+  // FUNCIONES (declaradas antes de los useEffect)
   // ============================================
+  
   const saveStateToCache = useCallback(() => {
     if (estudiante && niveles.length > 0) {
       const cacheData = {
         estudiante: {
           id: estudiante.id,
-          user_id: estudiante.user_id, // 🔥 Para validación cruzada
+          user_id: estudiante.user_id,
           nombre_completo: estudiante.nombre_completo,
           puntuacion_total: estudiante.puntuacion_total,
           grado: estudiante.grado,
@@ -133,75 +136,15 @@ function DashboardEstudianteGamificado() {
     }
   }, [estudiante, niveles, puntuacionTotal])
 
-  // Guardar caché periódicamente
-  useEffect(() => {
-    const interval = setInterval(() => {
-      saveStateToCache()
-    }, 30000)
-    
-    return () => clearInterval(interval)
-  }, [saveStateToCache])
-
-  // Guardar caché antes de que la página se descargue
-  useEffect(() => {
-    window.addEventListener('beforeunload', saveStateToCache)
-    return () => window.removeEventListener('beforeunload', saveStateToCache)
-  }, [saveStateToCache])
-
-  // ============================================
-  // MANEJAR VISIBILIDAD DE LA PESTAÑA
-  // ============================================
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('📱 Pestaña activa nuevamente - NO recargar')
-        isReturningToTab.current = true
-        setTimeout(() => {
-          isReturningToTab.current = false
-        }, 1000)
-      }
-    }
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [])
-
-  // Recuperar estado expandido guardado
-  useEffect(() => {
-    const savedState = sessionStorage.getItem('dashboard-ui-state')
-    if (savedState) {
-      try {
-        const { nivelExpandido: savedNivel, sidebarOpen: savedSidebar } = JSON.parse(savedState)
-        if (savedNivel) setNivelExpandido(savedNivel)
-        if (savedSidebar !== undefined) setSidebarOpen(savedSidebar)
-      } catch (e) {
-        console.error('Error al recuperar estado UI:', e)
-      }
-    }
-  }, [])
-
-  // Guardar estado UI
-  useEffect(() => {
-    sessionStorage.setItem('dashboard-ui-state', JSON.stringify({
-      nivelExpandido,
-      sidebarOpen
-    }))
-  }, [nivelExpandido, sidebarOpen])
-
-  // ============================================
-  // CARGAR DATOS PRINCIPALES
-  // ============================================
   const cargarDatos = useCallback(async (forceRefresh = false) => {
     const currentUserId = userIdRef.current
     const cachedUserId = cacheEstudiante.current?.user_id
     
-    // 🔥 FIX: Si ya cargamos para este usuario y no es force, saltar
     if (!forceRefresh && lastLoadedUserId.current === currentUserId && initialLoadDone && !isReturningToTab.current) {
       console.log('✅ Datos ya cargados para este usuario, usando caché')
       return
     }
     
-    // Si el usuario cambió, limpiar caché anterior
     if (currentUserId && cachedUserId && cachedUserId !== currentUserId) {
       console.log('🔄 Usuario cambió, limpiando caché anterior')
       cacheEstudiante.current = null
@@ -241,7 +184,6 @@ function DashboardEstudianteGamificado() {
         setNiveles(cacheNiveles.current)
       }
 
-      // Obtener insignias
       const { data: insigniasData } = await supabase
         .from('insignias_obtenidas')
         .select('nivel_id')
@@ -258,11 +200,7 @@ function DashboardEstudianteGamificado() {
       setNiveles(nivelesConEstado)
       setInsignias(insigniasData || [])
       setInitialLoadDone(true)
-      
-      // 🔥 Marcar como cargado para este usuario
       lastLoadedUserId.current = currentUserId
-      
-      // Guardar en caché después de cargar
       saveStateToCache()
 
     } catch (error) {
@@ -271,18 +209,8 @@ function DashboardEstudianteGamificado() {
     }
 
     setLoading(false)
-  }, [initialLoadDone, saveStateToCache]) // 🔥 Quitamos user de las dependencias
+  }, [initialLoadDone, saveStateToCache])
 
-  // 🔥 FIX: Cargar datos solo una vez al montar, usando userIdRef
-  useEffect(() => {
-    if (userIdRef.current && !initialLoadDone) {
-      cargarDatos()
-    }
-  }, [initialLoadDone, cargarDatos]) // 🔥 Quitamos user?.id de las dependencias
-
-  // ============================================
-  // CARGAR RETOS
-  // ============================================
   const cargarRetos = useCallback(async (nivelId) => {
     if (cacheRetos.current[nivelId]) {
       if (!retosPorNivel[nivelId]) {
@@ -317,7 +245,6 @@ function DashboardEstudianteGamificado() {
   }, [nivelExpandido, cargarRetos])
 
   const handleLogout = async () => {
-    // Limpiar caché al cerrar sesión
     sessionStorage.removeItem('dashboard-cache')
     sessionStorage.removeItem('dashboard-ui-state')
     cacheRetos.current = {}
@@ -341,7 +268,71 @@ function DashboardEstudianteGamificado() {
   const nivelesCompletados = niveles.filter(n => n.completado).length
   const porcentajeProgreso = niveles.length > 0 ? (nivelesCompletados / niveles.length) * 100 : 0
 
-  // Componente de inicio
+  // ============================================
+  // useEffect (después de las funciones)
+  // ============================================
+  
+  // Guardar caché periódicamente
+  useEffect(() => {
+    const interval = setInterval(saveStateToCache, 30000)
+    return () => clearInterval(interval)
+  }, [saveStateToCache])
+
+  // Guardar caché antes de cerrar
+  useEffect(() => {
+    window.addEventListener('beforeunload', saveStateToCache)
+    return () => window.removeEventListener('beforeunload', saveStateToCache)
+  }, [saveStateToCache])
+
+  // Manejar visibilidad de pestaña
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        isReturningToTab.current = true
+        setTimeout(() => {
+          isReturningToTab.current = false
+        }, 1000)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
+  // Recuperar estado UI y cargar retos automáticamente
+  useEffect(() => {
+    const savedState = sessionStorage.getItem('dashboard-ui-state')
+    if (savedState) {
+      try {
+        const { nivelExpandido: savedNivel, sidebarOpen: savedSidebar } = JSON.parse(savedState)
+        if (savedNivel) {
+          setNivelExpandido(savedNivel)
+          cargarRetos(savedNivel)
+        }
+        if (savedSidebar !== undefined) setSidebarOpen(savedSidebar)
+      } catch (e) {
+        console.error('Error al recuperar estado UI:', e)
+      }
+    }
+  }, [cargarRetos])
+
+  // Guardar estado UI
+  useEffect(() => {
+    sessionStorage.setItem('dashboard-ui-state', JSON.stringify({
+      nivelExpandido,
+      sidebarOpen
+    }))
+  }, [nivelExpandido, sidebarOpen])
+
+  // Cargar datos al montar
+  useEffect(() => {
+    if (userIdRef.current && !initialLoadDone) {
+      cargarDatos()
+    }
+  }, [initialLoadDone, cargarDatos])
+
+  // ============================================
+  // COMPONENTE DE INICIO
+  // ============================================
   const InicioContent = useCallback(() => (
     <>
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-[#e8dcca]">
@@ -495,7 +486,9 @@ function DashboardEstudianteGamificado() {
     </>
   ), [estudiante, niveles, nivelExpandido, cargandoRetos, retosPorNivel, rango, puntuacionTotal, porcentajeProgreso, nivelesCompletados, toggleNivel, cargarDatos])
 
-  // Contenido principal memorizado
+  // ============================================
+  // CONTENIDO PRINCIPAL MEMORIZADO
+  // ============================================
   const mainContent = useMemo(() => (
     <div className="min-h-screen bg-[#f5efe6]">
       <Sidebar 
@@ -743,6 +736,7 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
     const nuevosArchivos = Array.from(archivos)
     nuevosArchivos.splice(index, 1)
     setArchivos(nuevosArchivos)
+    setVistaPrevia(prev => prev.filter((_, i) => i !== index))
   }
 
   const tiposArchivo = reto.tipos_archivo || []
@@ -887,5 +881,4 @@ function AyudaEstudiante() {
   )
 }
 
-// Exportar con React.memo
 export default React.memo(DashboardEstudianteGamificado)
