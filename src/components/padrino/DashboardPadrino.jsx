@@ -480,3 +480,5 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
     </div>
   )
 }
+
+export default DashboardPadrino

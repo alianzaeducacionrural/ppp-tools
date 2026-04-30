@@ -1,60 +1,94 @@
+/* src/index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos globales mejorados */
-@layer base {
-  body {
-    @apply bg-gray-50 text-gray-800;
-  }
-  
-  /* Mejorar scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-100 rounded;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    @apply bg-green-400 rounded;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-green-600;
-  }
+/* Tema Café Tradicional (por defecto) */
+.theme-cafe {
+  --color-bg: #f5efe6;
+  --color-card: #ffffff;
+  --color-secondary: #f5efe6;
+  --color-text: #4a3222;
+  --color-text-light: #a68a64;
+  --color-border: #e8dcca;
+  --color-button: #6b4c3a;
+  --color-button-hover: #4a3222;
+  --color-accent: #d4c4a8;
+  --color-sidebar-from: #5a3e2e;
+  --color-sidebar-to: #3d2a1e;
 }
 
-@layer components {
-  .btn-primary {
-    @apply bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100;
-  }
-  
-  .btn-secondary {
-    @apply bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-all duration-200;
-  }
-  
-  .btn-danger {
-    @apply bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-200;
-  }
-  
-  .card {
-    @apply bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300;
-  }
-  
-  .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200;
-  }
+/* Tema Océano Profundo */
+.theme-azul {
+  --color-bg: #e8f4f8;
+  --color-card: #ffffff;
+  --color-secondary: #dceef5;
+  --color-text: #1a3a4a;
+  --color-text-light: #5a8a9a;
+  --color-border: #c0dce8;
+  --color-button: #2c6e8a;
+  --color-button-hover: #1a4a62;
+  --color-accent: #a8d0e0;
+  --color-sidebar-from: #2a5a6a;
+  --color-sidebar-to: #1a3a4a;
 }
 
-/* Animaciones */
+/* Tema Naturaleza */
+.theme-verde {
+  --color-bg: #e8f5e8;
+  --color-card: #ffffff;
+  --color-secondary: #d0e8d0;
+  --color-text: #1a4a2a;
+  --color-text-light: #5a8a5a;
+  --color-border: #b8d4b8;
+  --color-button: #2d6a3a;
+  --color-button-hover: #1a4a28;
+  --color-accent: #c0dcc0;
+  --color-sidebar-from: #2a5a30;
+  --color-sidebar-to: #1a3a20;
+}
+
+/* Clases utilitarias dinámicas */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.bg-card {
+  background-color: var(--color-card);
+}
+.bg-secondary {
+  background-color: var(--color-secondary);
+}
+.text-text {
+  color: var(--color-text);
+}
+.text-text-light {
+  color: var(--color-text-light);
+}
+.border-theme {
+  border-color: var(--color-border);
+}
+.btn-primary {
+  background-color: var(--color-button);
+  color: white;
+}
+.btn-primary:hover {
+  background-color: var(--color-button-hover);
+}
+
+/* Animación para fade-in suave */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.2s ease-out;
 }

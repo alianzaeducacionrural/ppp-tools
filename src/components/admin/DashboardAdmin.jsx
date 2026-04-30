@@ -320,3 +320,5 @@ function DashboardStats({ stats, loading, onRefresh }) {
     </div>
   )
 }
+
+export default DashboardAdmin

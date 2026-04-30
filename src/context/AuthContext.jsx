@@ -3,13 +3,17 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext({})
 
+export function useAuth() {
+  return useContext(AuthContext)
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [rol, setRol] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Verificar sesión actual
+    // Obtener sesión actual
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
@@ -19,7 +23,7 @@ export function AuthProvider({ children }) {
       }
     })
 
-    // Escuchar cambios de autenticación
+    // Escuchar cambios
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
@@ -33,61 +37,54 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  async function determinarRol(user) {
-    console.log('Determinando rol para:', user.email)
-    console.log('User ID:', user.id)
+  const determinarRol = async (userData) => {
+    console.log('🔍 Determinando rol para:', userData.email)
     
     try {
-      // 1. Verificar si es administrador (está en tabla padrinos con nombre Administrador)
-      const { data: adminData, error: adminError } = await supabase
+      // Verificar si es administrador
+      const { data: adminData } = await supabase
         .from('padrinos')
-        .select('nombre, email')
-        .eq('user_id', user.id)
+        .select('nombre')
+        .eq('user_id', userData.id)
+        .eq('nombre', 'Administrador')
         .maybeSingle()
 
-      console.log('Admin check:', adminData)
-
-      if (adminData && adminData.nombre === 'Administrador') {
-        console.log('✅ Rol detectado: ADMIN')
+      if (adminData) {
+        console.log('✅ Rol: ADMIN')
         setRol('admin')
         setLoading(false)
         return
       }
 
-      // 2. Verificar si es padrino (está en tabla padrinos)
-      const { data: padrinoData, error: padrinoError } = await supabase
+      // Verificar si es padrino
+      const { data: padrinoData } = await supabase
         .from('padrinos')
-        .select('nombre, email')
-        .eq('user_id', user.id)
+        .select('id')
+        .eq('user_id', userData.id)
         .maybeSingle()
 
-      console.log('Padrino check:', padrinoData)
-
-      if (padrinoData && !padrinoError) {
-        console.log('✅ Rol detectado: PADRINO -', padrinoData.nombre)
+      if (padrinoData) {
+        console.log('✅ Rol: PADRINO')
         setRol('padrino')
         setLoading(false)
         return
       }
 
-      // 3. Verificar si es estudiante
-      const { data: estudianteData, error: estudianteError } = await supabase
+      // Verificar si es estudiante
+      const { data: estudianteData } = await supabase
         .from('estudiantes')
-        .select('id, nombre_completo')
-        .eq('user_id', user.id)
+        .select('id')
+        .eq('user_id', userData.id)
         .maybeSingle()
 
-      console.log('Estudiante check:', estudianteData)
-
-      if (estudianteData && !estudianteError) {
-        console.log('✅ Rol detectado: ESTUDIANTE -', estudianteData.nombre_completo)
+      if (estudianteData) {
+        console.log('✅ Rol: ESTUDIANTE')
         setRol('estudiante')
         setLoading(false)
         return
       }
 
-      // 4. Si llegamos aquí, no tiene rol asignado
-      console.log('❌ Rol detectado: SIN ROL - El usuario no está registrado como estudiante ni padrino')
+      console.log('⚠️ Rol: SIN ROL')
       setRol(null)
       setLoading(false)
       
@@ -98,23 +95,15 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function login(email, password) {
-    console.log('Intentando login con:', email)
+  const login = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     })
-    
-    if (error) {
-      console.error('Error de login:', error)
-    } else {
-      console.log('Login exitoso:', data.user?.email)
-    }
-    
     return { data, error }
   }
 
-  async function logout() {
+  const logout = async () => {
     const { error } = await supabase.auth.signOut()
     return { error }
   }
@@ -124,8 +113,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth() {
-  return useContext(AuthContext)
 }
