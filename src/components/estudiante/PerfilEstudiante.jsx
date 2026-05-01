@@ -7,8 +7,9 @@ import {
   getAvataresDesbloqueados
 } from '../../data/avatares'
 import { Avatar } from '../comunes/Avatar'
+import { obtenerRango } from '../../data/rangos'
 
-export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, rango, nivelesCompletados }) {
+export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, nivelesCompletados }) {
   const [editando, setEditando] = useState(false)
   const [cambiandoPassword, setCambiandoPassword] = useState(false)
   const [seleccionandoAvatar, setSeleccionandoAvatar] = useState(false)
@@ -29,6 +30,8 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ra
     totalInsignias: 0,
     promedioPuntuacion: 0
   })
+
+  const rango = obtenerRango(puntuacionTotal, estudiante?.tipo_proyecto || 'cafe')
 
   // Cargar avatar actual del estudiante
   useEffect(() => {
@@ -361,6 +364,14 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ra
                   <div>
                     <span className="text-[#a68a64]">📚 Grado:</span>
                     <p className="font-medium text-[#4a3222]">{estudiante?.grado}°</p>
+                  </div>
+                  <div>
+                    <span className="text-[#a68a64]">🏠 Sede:</span>
+                    <p className="font-medium text-[#4a3222]">{estudiante?.sedes?.nombre || 'No especificada'}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#a68a64]">🗓️ Registro:</span>
+                    <p className="font-medium text-[#4a3222]">{new Date(estudiante?.created_at).toLocaleDateString('es-CO')}</p>
                   </div>
                 </div>
               </div>

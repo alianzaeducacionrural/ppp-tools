@@ -12,14 +12,14 @@ export function AuthProvider({ children }) {
   const [rol, setRol] = useState(null)
   const [loading, setLoading] = useState(true)
   
-  // 🔥 FIX: Refs para evitar re-ejecuciones y duplicados
+  // Refs para evitar re-ejecuciones y duplicados
   const userIdRef = useRef(null)
   const rolRef = useRef(null)
   const subscriptionRef = useRef(null)
   const isInitializedRef = useRef(false)
 
   const determinarRol = async (userData) => {
-    // 🔥 Evitar llamadas duplicadas si el usuario no cambió
+    // Evitar llamadas duplicadas si el usuario no cambió
     if (userIdRef.current === userData.id && rolRef.current) {
       console.log('⏭️ Rol ya determinado para este usuario, saltando')
       setLoading(false)
@@ -91,12 +91,12 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // 🔥 FIX: Función centralizada para actualizar el estado de usuario
+  // Función centralizada para actualizar el estado de usuario
   const handleUserUpdate = async (session) => {
     const newUser = session?.user ?? null
     const newUserId = newUser?.id
     
-    // 🔥 Ignorar si es el mismo usuario y ya está inicializado
+    // Ignorar si es el mismo usuario y ya está inicializado
     if (isInitializedRef.current && userIdRef.current === newUserId) {
       console.log('🔄 Mismo usuario, ignorando actualización redundante')
       if (loading) setLoading(false)
@@ -119,7 +119,7 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // 🔥 Evitar múltiples inicializaciones
+    // Evitar múltiples inicializaciones
     if (subscriptionRef.current) {
       console.log('⚠️ Suscripción ya existe, saltando inicialización')
       return
@@ -136,7 +136,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('🔐 Auth event:', event, session?.user?.id)
       
-      // 🔥 FIX: Filtrar eventos que no requieren acción
+      // Filtrar eventos que no requieren acción
       const eventsToIgnore = [
         'TOKEN_REFRESHED',
         'USER_UPDATED',
@@ -149,7 +149,7 @@ export function AuthProvider({ children }) {
         return
       }
       
-      // 🔥 Para SIGNED_IN: solo procesar si es la primera vez o el usuario cambió
+      // Para SIGNED_IN: solo procesar si es la primera vez o el usuario cambió
       if (event === 'SIGNED_IN') {
         if (isInitializedRef.current && userIdRef.current === session?.user?.id) {
           console.log('⏭️ SIGNED_IN ignorado - sesión ya activa para este usuario')
@@ -157,7 +157,7 @@ export function AuthProvider({ children }) {
         }
       }
       
-      // 🔥 Para SIGNED_OUT: siempre procesar
+      // Para SIGNED_OUT: siempre procesar
       if (event === 'SIGNED_OUT') {
         console.log('🚪 Usuario cerrado sesión')
         setUser(null)
@@ -183,7 +183,7 @@ export function AuthProvider({ children }) {
         subscriptionRef.current = null
       }
     }
-  }, []) // ← Dependencia vacía: solo se ejecuta una vez
+  }, []) // Dependencia vacía: solo se ejecuta una vez
 
   const login = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({

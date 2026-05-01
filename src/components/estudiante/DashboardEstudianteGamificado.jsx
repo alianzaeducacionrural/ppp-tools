@@ -8,6 +8,9 @@ import { Sidebar } from '../comunes/Sidebar'
 import { PerfilEstudiante } from './PerfilEstudiante'
 import { RankingEstudiante } from './RankingEstudiante'
 import { InsigniasEstudiante } from './InsigniasEstudiante'
+import { AyudaEstudiante } from './AyudaEstudiante'
+import { useEvidenciaNotification } from '../comunes/NotificationToast'
+import { obtenerRango } from '../../data/rangos'
 
 function DashboardEstudianteGamificado() {
   const { user, logout } = useAuth()
@@ -19,6 +22,7 @@ function DashboardEstudianteGamificado() {
   // ============================================
   const userIdRef = useRef(user?.id)
   const lastLoadedUserId = useRef(null)
+  const hasLoaded = useRef(false) // 🔥 Para evitar carga duplicada
   
   useEffect(() => {
     userIdRef.current = user?.id
@@ -72,6 +76,7 @@ function DashboardEstudianteGamificado() {
   const [insignias, setInsignias] = useState([])
   const [loading, setLoading] = useState(!cachedInitialLoadDone)
   const [puntuacionTotal, setPuntuacionTotal] = useState(cachedPuntuacion)
+  const [racha, setRacha] = useState(0)
   
   // Estados de UI
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -100,9 +105,43 @@ function DashboardEstudianteGamificado() {
   const activeTab = getActiveTab()
 
   // ============================================
-  // FUNCIONES (declaradas antes de los useEffect)
+  // FUNCIONES
   // ============================================
   
+  const calcularRacha = async (estudianteId) => {
+    const { data: evidencias } = await supabase
+      .from('evidencias')
+      .select('fecha_revision')
+      .eq('estudiante_id', estudianteId)
+      .eq('estado', 'aprobado')
+      .order('fecha_revision', { ascending: false })
+
+    if (!evidencias || evidencias.length === 0) {
+      setRacha(0)
+      return
+    }
+
+    let rachaActual = 1
+    let fechaAnterior = new Date(evidencias[0].fecha_revision)
+    fechaAnterior.setHours(0, 0, 0, 0)
+
+    for (let i = 1; i < evidencias.length; i++) {
+      const fechaActual = new Date(evidencias[i].fecha_revision)
+      fechaActual.setHours(0, 0, 0, 0)
+      
+      const diffDias = Math.floor((fechaAnterior - fechaActual) / (1000 * 60 * 60 * 24))
+      
+      if (diffDias === 1) {
+        rachaActual++
+        fechaAnterior = fechaActual
+      } else if (diffDias > 1) {
+        break
+      }
+    }
+    
+    setRacha(rachaActual)
+  }
+
   const saveStateToCache = useCallback(() => {
     if (estudiante && niveles.length > 0) {
       const cacheData = {
@@ -132,7 +171,6 @@ function DashboardEstudianteGamificado() {
         timestamp: Date.now()
       }
       sessionStorage.setItem('dashboard-cache', JSON.stringify(cacheData))
-      console.log('💾 Estado guardado en caché')
     }
   }, [estudiante, niveles, puntuacionTotal])
 
@@ -141,12 +179,10 @@ function DashboardEstudianteGamificado() {
     const cachedUserId = cacheEstudiante.current?.user_id
     
     if (!forceRefresh && lastLoadedUserId.current === currentUserId && initialLoadDone && !isReturningToTab.current) {
-      console.log('✅ Datos ya cargados para este usuario, usando caché')
       return
     }
     
     if (currentUserId && cachedUserId && cachedUserId !== currentUserId) {
-      console.log('🔄 Usuario cambió, limpiando caché anterior')
       cacheEstudiante.current = null
       cacheNiveles.current = null
       cacheRetos.current = {}
@@ -167,6 +203,8 @@ function DashboardEstudianteGamificado() {
       cacheEstudiante.current = estudianteData
       setEstudiante(estudianteData)
       setPuntuacionTotal(estudianteData.puntuacion_total || 0)
+
+      await calcularRacha(estudianteData.id)
 
       if (!forceRefresh && cacheNiveles.current) {
         setNiveles(cacheNiveles.current)
@@ -256,33 +294,37 @@ function DashboardEstudianteGamificado() {
     toast.success('Sesión cerrada')
   }
 
-  const obtenerRango = (puntos) => {
-    if (puntos < 200) return { nombre: 'Semilla', emoji: '🌱', color: 'bg-amber-100 text-amber-800', border: 'border-amber-200' }
-    if (puntos < 500) return { nombre: 'Brotes', emoji: '🌿', color: 'bg-amber-200 text-amber-800', border: 'border-amber-300' }
-    if (puntos < 1000) return { nombre: 'Cafetero Aprendiz', emoji: '☕', color: 'bg-amber-300 text-amber-900', border: 'border-amber-400' }
-    if (puntos < 2000) return { nombre: 'Maestro Cafetero', emoji: '🏆', color: 'bg-yellow-200 text-yellow-800', border: 'border-yellow-300' }
-    return { nombre: 'Leyenda del Café', emoji: '👑', color: 'bg-amber-400 text-amber-900', border: 'border-amber-500' }
-  }
+  // Notificaciones de revisión de evidencias
+  useEvidenciaNotification(supabase, estudiante?.id, () => cargarDatos(true))
 
-  const rango = obtenerRango(puntuacionTotal)
+  const rango = obtenerRango(puntuacionTotal, estudiante?.tipo_proyecto || 'cafe')
   const nivelesCompletados = niveles.filter(n => n.completado).length
   const porcentajeProgreso = niveles.length > 0 ? (nivelesCompletados / niveles.length) * 100 : 0
 
   // ============================================
-  // useEffect (después de las funciones)
+  // useEffect CORREGIDOS (sin bucles infinitos)
   // ============================================
   
   // Guardar caché periódicamente
   useEffect(() => {
-    const interval = setInterval(saveStateToCache, 30000)
+    const interval = setInterval(() => {
+      if (estudiante && niveles.length > 0) {
+        saveStateToCache()
+      }
+    }, 30000)
     return () => clearInterval(interval)
-  }, [saveStateToCache])
+  }, [estudiante, niveles, saveStateToCache])
 
   // Guardar caché antes de cerrar
   useEffect(() => {
-    window.addEventListener('beforeunload', saveStateToCache)
-    return () => window.removeEventListener('beforeunload', saveStateToCache)
-  }, [saveStateToCache])
+    const handleBeforeUnload = () => {
+      if (estudiante && niveles.length > 0) {
+        saveStateToCache()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [estudiante, niveles, saveStateToCache])
 
   // Manejar visibilidad de pestaña
   useEffect(() => {
@@ -298,10 +340,10 @@ function DashboardEstudianteGamificado() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
-  // Recuperar estado UI y cargar retos automáticamente
+  // Recuperar estado UI y cargar retos automáticamente (solo una vez al inicio)
   useEffect(() => {
     const savedState = sessionStorage.getItem('dashboard-ui-state')
-    if (savedState) {
+    if (savedState && !nivelExpandido) {
       try {
         const { nivelExpandido: savedNivel, sidebarOpen: savedSidebar } = JSON.parse(savedState)
         if (savedNivel) {
@@ -313,25 +355,28 @@ function DashboardEstudianteGamificado() {
         console.error('Error al recuperar estado UI:', e)
       }
     }
-  }, [cargarRetos])
+  }, [cargarRetos, nivelExpandido])
 
   // Guardar estado UI
   useEffect(() => {
-    sessionStorage.setItem('dashboard-ui-state', JSON.stringify({
-      nivelExpandido,
-      sidebarOpen
-    }))
+    if (nivelExpandido !== null || sidebarOpen) {
+      sessionStorage.setItem('dashboard-ui-state', JSON.stringify({
+        nivelExpandido,
+        sidebarOpen
+      }))
+    }
   }, [nivelExpandido, sidebarOpen])
 
-  // Cargar datos al montar
+  // Cargar datos al montar (solo una vez)
   useEffect(() => {
-    if (userIdRef.current && !initialLoadDone) {
+    if (userIdRef.current && !hasLoaded.current) {
+      hasLoaded.current = true
       cargarDatos()
     }
-  }, [initialLoadDone, cargarDatos])
+  }, []) // Dependencia vacía - solo una vez
 
   // ============================================
-  // COMPONENTE DE INICIO
+  // COMPONENTE DE INICIO (Mapa de Misiones)
   // ============================================
   const InicioContent = useCallback(() => (
     <>
@@ -346,16 +391,33 @@ function DashboardEstudianteGamificado() {
               {estudiante?.tipo_proyecto === 'cafe' ? ' ☕ Escuela y Café' : ' 🌽 Seguridad Alimentaria'}
             </p>
           </div>
-          <div className={`px-4 py-2 rounded-full ${rango.color} ${rango.border} border flex items-center gap-2 shadow-sm`}>
-            <span className="text-2xl">{rango.emoji}</span>
-            <span className="font-semibold">{rango.nombre}</span>
-            <span className="text-sm opacity-75">{puntuacionTotal} pts</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                toast.loading('Refrescando datos...', { id: 'refresh' })
+                cargarDatos(true).then(() => {
+                  toast.success('¡Datos actualizados!', { id: 'refresh' })
+                })
+              }}
+              className="flex items-center gap-2 bg-[#f5efe6] hover:bg-[#e8dcca] text-[#6b4c3a] hover:text-[#4a3222] transition-all duration-200 px-4 py-2 rounded-lg border border-[#e8dcca] hover:border-[#d4c4a8] shadow-sm"
+              title="Actualizar datos"
+            >
+              <span className="text-lg">🔄</span>
+              <span className="text-sm font-medium hidden sm:inline">Actualizar</span>
+            </button>
+            <div className={`px-4 py-2 rounded-full ${rango.color} ${rango.border} border flex items-center gap-2 shadow-sm`}>
+              <span className="text-2xl">{rango.emoji}</span>
+              <span className="font-semibold">{rango.nombre}</span>
+              <span className="text-sm opacity-75">{puntuacionTotal} pts</span>
+            </div>
           </div>
         </div>
         
         <div className="mt-4 flex items-center gap-2 text-[#6b4c3a] bg-[#f5efe6] rounded-lg p-3 border border-[#e8dcca]">
           <span className="text-xl">🔥</span>
-          <span className="text-sm font-medium">Racha actual: 5 días consecutivos</span>
+          <span className="text-sm font-medium">
+            Racha actual: {racha} {racha === 1 ? 'día consecutivo' : 'días consecutivos'}
+          </span>
         </div>
       </div>
 
@@ -464,7 +526,11 @@ function DashboardEstudianteGamificado() {
                     ))}
                   </div>
                 ) : retosPorNivel[nivel.id]?.length === 0 ? (
-                  <div className="text-center py-8 text-[#a68a64]">No hay retos para este nivel aún.</div>
+                  <div className="text-center py-12 bg-white rounded-lg border border-[#e8dcca]">
+                    <span className="text-5xl mb-3 block">📭</span>
+                    <p className="text-[#a68a64] font-medium">No hay retos para este nivel aún.</p>
+                    <p className="text-xs text-[#a68a64] mt-1">Vuelve más tarde o contacta a tu padrino.</p>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {retosPorNivel[nivel.id]?.map((reto, idx) => (
@@ -484,7 +550,7 @@ function DashboardEstudianteGamificado() {
         ))}
       </div>
     </>
-  ), [estudiante, niveles, nivelExpandido, cargandoRetos, retosPorNivel, rango, puntuacionTotal, porcentajeProgreso, nivelesCompletados, toggleNivel, cargarDatos])
+  ), [estudiante, niveles, nivelExpandido, cargandoRetos, retosPorNivel, rango, puntuacionTotal, porcentajeProgreso, nivelesCompletados, racha, toggleNivel, cargarDatos])
 
   // ============================================
   // CONTENIDO PRINCIPAL MEMORIZADO
@@ -525,7 +591,6 @@ function DashboardEstudianteGamificado() {
                 estudiante={estudiante} 
                 onActualizar={() => cargarDatos(true)}
                 puntuacionTotal={puntuacionTotal}
-                rango={rango}
                 nivelesCompletados={niveles.filter(n => n.completado)}
               />
             )}
@@ -540,7 +605,7 @@ function DashboardEstudianteGamificado() {
                 niveles={niveles}
               />
             )}
-            {activeTab === 'ayuda' && <AyudaEstudiante />}
+            {activeTab === 'ayuda' && <AyudaEstudiante tipoProyecto={estudiante?.tipo_proyecto} />}
           </div>
         </div>
       </div>
@@ -736,7 +801,6 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
     const nuevosArchivos = Array.from(archivos)
     nuevosArchivos.splice(index, 1)
     setArchivos(nuevosArchivos)
-    setVistaPrevia(prev => prev.filter((_, i) => i !== index))
   }
 
   const tiposArchivo = reto.tipos_archivo || []
@@ -837,47 +901,6 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
       
       {archivos.length > 0 && <div className="mt-3 p-2 bg-green-50 rounded-lg text-center text-sm text-green-700">✅ {archivos.length} archivo(s) seleccionado(s) listo(s) para subir</div>}
     </form>
-  )
-}
-
-// ==========================================
-// COMPONENTE AYUDA
-// ==========================================
-function AyudaEstudiante() {
-  const preguntasFrecuentes = [
-    { q: '¿Cómo subo una evidencia?', a: 'Haz clic en "Subir evidencia" dentro de cada reto. Puedes subir imágenes, videos o escribir texto según lo que pida el reto.' },
-    { q: '¿Cómo sé si mi evidencia fue aprobada?', a: 'Recibirás una notificación y el estado cambiará a "Aprobado" o "Rechazado" con el comentario del padrino.' },
-    { q: '¿Qué significan los rangos?', a: 'Los rangos son: Semilla (0-199 pts), Brotes (200-499 pts), Cafetero Aprendiz (500-999 pts), Maestro Cafetero (1000-1999 pts) y Leyenda del Café (2000+ pts).' },
-    { q: '¿Cómo obtengo insignias?', a: 'Completando todos los retos de un nivel. La insignia se otorga automáticamente.' },
-  ]
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-md p-6 border border-[#e8dcca]">
-        <h2 className="text-lg font-semibold text-[#4a3222] mb-4 flex items-center gap-2">📘 Guía rápida</h2>
-        <div className="text-[#6b4c3a] space-y-2">
-          <p>Bienvenido a PPP Tools, tu plataforma de aprendizaje gamificado. Aquí tienes algunas recomendaciones:</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Completa los retos en orden para desbloquear nuevos niveles</li>
-            <li>Sube evidencias de calidad para obtener mejor puntuación</li>
-            <li>Revisa los comentarios de los padrinos para mejorar</li>
-            <li>Acumula puntos para subir de rango y obtener insignias</li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-md p-6 border border-[#e8dcca]">
-        <h2 className="text-lg font-semibold text-[#4a3222] mb-4 flex items-center gap-2">❓ Preguntas frecuentes</h2>
-        <div className="space-y-4">
-          {preguntasFrecuentes.map((item, idx) => (
-            <details key={idx} className="group">
-              <summary className="cursor-pointer font-medium text-[#6b4c3a] hover:text-[#4a3222] transition">{item.q}</summary>
-              <p className="mt-2 text-sm text-[#a68a64] pl-4">{item.a}</p>
-            </details>
-          ))}
-        </div>
-      </div>
-    </div>
   )
 }
 
