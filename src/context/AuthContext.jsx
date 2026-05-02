@@ -56,6 +56,7 @@ export function AuthProvider({ children }) {
       if (padrinoData) {
         console.log('✅ Rol: PADRINO')
         setRol('padrino')
+        // También guardar información del padrino si es necesario
         rolRef.current = 'padrino'
         userIdRef.current = userData.id
         setLoading(false)

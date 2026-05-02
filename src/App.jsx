@@ -80,13 +80,9 @@ function AppRoutes() {
       } />
       
       {/* Rutas de padrino y admin */}
-      <Route path="/padrino" element={
-        user && rol === 'padrino' ? (
-          <DashboardPadrino />
-        ) : (
-          <Navigate to={user ? '/' : '/login'} replace />
-        )
-      } />
+      <Route path="/padrino/*" element={
+        user && rol === 'padrino' ? 
+        <DashboardPadrino /> : <Navigate to="/login" replace />} />
       <Route path="/admin" element={
         user && rol === 'admin' ? (
           <DashboardAdmin />
