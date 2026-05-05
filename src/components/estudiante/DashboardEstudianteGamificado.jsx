@@ -22,7 +22,7 @@ function DashboardEstudianteGamificado() {
   // ============================================
   const userIdRef = useRef(user?.id)
   const lastLoadedUserId = useRef(null)
-  const hasLoaded = useRef(false) // 🔥 Para evitar carga duplicada
+  const hasLoaded = useRef(false)
   
   useEffect(() => {
     userIdRef.current = user?.id
@@ -46,7 +46,6 @@ function DashboardEstudianteGamificado() {
           }
         }
         if (cache.timestamp && Date.now() - cache.timestamp < 3600000) {
-          console.log('📦 Caché recuperado del sessionStorage')
           return {
             cachedEstudiante: cache.estudiante,
             cachedNiveles: cache.niveles,
@@ -294,7 +293,6 @@ function DashboardEstudianteGamificado() {
     toast.success('Sesión cerrada')
   }
 
-  // Notificaciones de revisión de evidencias
   useEvidenciaNotification(supabase, estudiante?.id, () => cargarDatos(true))
 
   const rango = obtenerRango(puntuacionTotal, estudiante?.tipo_proyecto || 'cafe')
@@ -302,10 +300,9 @@ function DashboardEstudianteGamificado() {
   const porcentajeProgreso = niveles.length > 0 ? (nivelesCompletados / niveles.length) * 100 : 0
 
   // ============================================
-  // useEffect CORREGIDOS (sin bucles infinitos)
+  // useEffect
   // ============================================
   
-  // Guardar caché periódicamente
   useEffect(() => {
     const interval = setInterval(() => {
       if (estudiante && niveles.length > 0) {
@@ -315,7 +312,6 @@ function DashboardEstudianteGamificado() {
     return () => clearInterval(interval)
   }, [estudiante, niveles, saveStateToCache])
 
-  // Guardar caché antes de cerrar
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (estudiante && niveles.length > 0) {
@@ -326,7 +322,6 @@ function DashboardEstudianteGamificado() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [estudiante, niveles, saveStateToCache])
 
-  // Manejar visibilidad de pestaña
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -340,7 +335,6 @@ function DashboardEstudianteGamificado() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
-  // Recuperar estado UI y cargar retos automáticamente (solo una vez al inicio)
   useEffect(() => {
     const savedState = sessionStorage.getItem('dashboard-ui-state')
     if (savedState && !nivelExpandido) {
@@ -357,7 +351,6 @@ function DashboardEstudianteGamificado() {
     }
   }, [cargarRetos, nivelExpandido])
 
-  // Guardar estado UI
   useEffect(() => {
     if (nivelExpandido !== null || sidebarOpen) {
       sessionStorage.setItem('dashboard-ui-state', JSON.stringify({
@@ -367,31 +360,32 @@ function DashboardEstudianteGamificado() {
     }
   }, [nivelExpandido, sidebarOpen])
 
-  // Cargar datos al montar (solo una vez)
   useEffect(() => {
     if (userIdRef.current && !hasLoaded.current) {
       hasLoaded.current = true
       cargarDatos()
     }
-  }, []) // Dependencia vacía - solo una vez
+  }, [])
 
   // ============================================
-  // COMPONENTE DE INICIO (Mapa de Misiones)
+  // COMPONENTE DE INICIO (Mapa de Misiones) - RESPONSIVE
   // ============================================
   const InicioContent = useCallback(() => (
     <>
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-[#e8dcca]">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* Tarjeta de bienvenida - responsive */}
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border border-[#e8dcca]">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-[#4a3222] flex items-center gap-2">
-              🧙‍♂️ ¡Hola, {estudiante?.nombre_completo?.split(' ')[0]}!
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[#4a3222] flex items-center gap-2">
+              <span className="text-xl sm:text-2xl md:text-3xl">🧙‍♂️</span>
+              <span>¡Hola, {estudiante?.nombre_completo?.split(' ')[0]}!</span>
             </h2>
-            <p className="text-[#a68a64] mt-1 text-sm">
+            <p className="text-xs sm:text-sm text-[#a68a64] mt-1">
               {estudiante?.instituciones?.nombre} · {estudiante?.grado}° · 
               {estudiante?.tipo_proyecto === 'cafe' ? ' ☕ Escuela y Café' : ' 🌽 Seguridad Alimentaria'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
             <button
               onClick={() => {
                 toast.loading('Refrescando datos...', { id: 'refresh' })
@@ -399,140 +393,142 @@ function DashboardEstudianteGamificado() {
                   toast.success('¡Datos actualizados!', { id: 'refresh' })
                 })
               }}
-              className="flex items-center gap-2 bg-[#f5efe6] hover:bg-[#e8dcca] text-[#6b4c3a] hover:text-[#4a3222] transition-all duration-200 px-4 py-2 rounded-lg border border-[#e8dcca] hover:border-[#d4c4a8] shadow-sm"
+              className="flex items-center gap-1 sm:gap-2 bg-[#f5efe6] hover:bg-[#e8dcca] text-[#6b4c3a] hover:text-[#4a3222] transition-all duration-200 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-[#e8dcca] hover:border-[#d4c4a8] shadow-sm text-xs sm:text-sm"
               title="Actualizar datos"
             >
-              <span className="text-lg">🔄</span>
-              <span className="text-sm font-medium hidden sm:inline">Actualizar</span>
+              <span className="text-sm sm:text-base md:text-lg">🔄</span>
+              <span className="text-xs sm:text-sm font-medium hidden xs:inline">Actualizar</span>
             </button>
-            <div className={`px-4 py-2 rounded-full ${rango.color} ${rango.border} border flex items-center gap-2 shadow-sm`}>
-              <span className="text-2xl">{rango.emoji}</span>
-              <span className="font-semibold">{rango.nombre}</span>
-              <span className="text-sm opacity-75">{puntuacionTotal} pts</span>
+            <div className={`px-2 sm:px-4 py-1 sm:py-2 rounded-full ${rango.color} ${rango.border} border flex items-center gap-1 sm:gap-2 shadow-sm`}>
+              <span className="text-base sm:text-xl md:text-2xl">{rango.emoji}</span>
+              <span className="text-xs sm:text-sm font-semibold hidden xs:inline">{rango.nombre}</span>
+              <span className="text-xs sm:text-sm opacity-75">{puntuacionTotal} pts</span>
             </div>
           </div>
         </div>
         
-        <div className="mt-4 flex items-center gap-2 text-[#6b4c3a] bg-[#f5efe6] rounded-lg p-3 border border-[#e8dcca]">
-          <span className="text-xl">🔥</span>
-          <span className="text-sm font-medium">
+        <div className="mt-3 sm:mt-4 flex items-center gap-2 text-[#6b4c3a] bg-[#f5efe6] rounded-lg p-2 sm:p-3 border border-[#e8dcca]">
+          <span className="text-base sm:text-lg md:text-xl">🔥</span>
+          <span className="text-xs sm:text-sm font-medium">
             Racha actual: {racha} {racha === 1 ? 'día consecutivo' : 'días consecutivos'}
           </span>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-[#e8dcca]">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="font-semibold text-[#4a3222] flex items-center gap-2">
+      {/* Barra de progreso - responsive */}
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8 border border-[#e8dcca]">
+        <div className="flex justify-between items-center mb-2 sm:mb-3">
+          <h3 className="text-sm sm:text-base font-semibold text-[#4a3222] flex items-center gap-2">
             <span>📊</span> Tu progreso general
           </h3>
-          <span className="text-lg font-bold text-[#6b4c3a]">{Math.round(porcentajeProgreso)}%</span>
+          <span className="text-sm sm:text-base md:text-lg font-bold text-[#6b4c3a]">{Math.round(porcentajeProgreso)}%</span>
         </div>
-        <div className="w-full bg-[#e8dcca] rounded-full h-4">
+        <div className="w-full bg-[#e8dcca] rounded-full h-2 sm:h-3">
           <div
-            className="bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] h-4 rounded-full transition-all duration-500"
+            className="bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] h-2 sm:h-3 rounded-full transition-all duration-500"
             style={{ width: `${porcentajeProgreso}%` }}
           ></div>
         </div>
-        <p className="text-sm text-[#a68a64] mt-2">
+        <p className="text-xs sm:text-sm text-[#a68a64] mt-2">
           {nivelesCompletados} de {niveles.length} niveles completados
         </p>
       </div>
 
-      <div className="space-y-4">
+      {/* Lista de niveles - responsive */}
+      <div className="space-y-3 sm:space-y-4">
         {niveles.map((nivel, index) => (
-          <div key={nivel.id} className="bg-white rounded-xl shadow-md overflow-hidden border border-[#e8dcca] transition-all">
+          <div key={nivel.id} className="bg-white rounded-lg sm:rounded-xl shadow-md overflow-hidden border border-[#e8dcca] transition-all">
             <button
               onClick={() => !nivel.bloqueado && toggleNivel(nivel.id)}
               disabled={nivel.bloqueado}
-              className={`w-full p-5 flex items-center justify-between transition-all ${
+              className={`w-full p-3 sm:p-5 flex items-center justify-between transition-all ${
                 nivel.bloqueado ? 'opacity-50 cursor-not-allowed bg-[#f5efe6]' : 'hover:bg-[#f5efe6] cursor-pointer'
               } ${nivelExpandido === nivel.id ? 'border-b border-[#e8dcca]' : ''}`}
             >
-              <div className="flex items-center gap-5">
+              <div className="flex items-center gap-3 sm:gap-5">
                 <div className="relative group">
-                  <div className="w-20 h-20 flex-shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-[#f5efe6] to-[#e8dcca] flex items-center justify-center">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 flex-shrink-0 overflow-hidden rounded-lg sm:rounded-xl bg-gradient-to-br from-[#f5efe6] to-[#e8dcca] flex items-center justify-center">
                     {nivel.imagen_nivel_url ? (
                       <img 
                         src={nivel.imagen_nivel_url} 
                         alt={nivel.nombre}
-                        className="w-full h-full object-contain p-2 transition-transform group-hover:scale-105 cursor-pointer"
+                        className="w-full h-full object-contain p-1 sm:p-2 transition-transform group-hover:scale-105 cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation()
                           setImagenNivelAmpliada(nivel.imagen_nivel_url)
                         }}
                       />
                     ) : (
-                      <span className="text-3xl">
+                      <span className="text-xl sm:text-2xl md:text-3xl">
                         {nivel.completado ? '✅' : nivel.bloqueado ? '🔒' : ['🌱', '🌿', '☕', '🏆'][index] || '🎯'}
                       </span>
                     )}
                   </div>
                   {nivel.imagen_nivel_url && (
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-xl transition-all flex items-center justify-center pointer-events-none">
-                      <span className="text-white text-xl opacity-0 group-hover:opacity-100 transition-opacity">🔍</span>
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg sm:rounded-xl transition-all flex items-center justify-center pointer-events-none">
+                      <span className="text-white text-sm sm:text-base md:text-xl opacity-0 group-hover:opacity-100 transition-opacity">🔍</span>
                     </div>
                   )}
                 </div>
                 
                 <div className="text-left">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h3 className="text-lg font-bold text-[#4a3222]">{nivel.nombre}</h3>
+                  <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-wrap">
+                    <h3 className="text-sm sm:text-base md:text-lg font-bold text-[#4a3222]">{nivel.nombre}</h3>
                     {nivel.completado && (
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">✅ Completado</span>
+                      <span className="text-[10px] sm:text-xs bg-green-100 text-green-800 px-1.5 sm:px-2 py-0.5 rounded-full">✅ Completado</span>
                     )}
                     {nivel.bloqueado && (
-                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">🔒 Bloqueado</span>
+                      <span className="text-[10px] sm:text-xs bg-gray-100 text-gray-500 px-1.5 sm:px-2 py-0.5 rounded-full">🔒 Bloqueado</span>
                     )}
                   </div>
-                  <p className="text-sm text-[#a68a64] mt-1">
+                  <p className="text-xs sm:text-sm text-[#a68a64] mt-0.5 sm:mt-1">
                     Nivel {nivel.numero_nivel} de 4
                   </p>
                 </div>
               </div>
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 {nivel.completado && nivel.insignia_url && (
                   <img 
                     src={nivel.insignia_url} 
                     alt="Insignia" 
-                    className="w-8 h-8 object-contain cursor-pointer hover:scale-110 transition"
+                    className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 object-contain cursor-pointer hover:scale-110 transition"
                     onClick={(e) => {
                       e.stopPropagation()
                       setImagenNivelAmpliada(nivel.insignia_url)
                     }}
                   />
                 )}
-                <span className="text-2xl text-[#a68a64]">
+                <span className="text-xl sm:text-2xl text-[#a68a64]">
                   {nivelExpandido === nivel.id ? '▲' : '▼'}
                 </span>
               </div>
             </button>
 
             {nivelExpandido === nivel.id && !nivel.bloqueado && (
-              <div className="p-5 bg-[#f5efe6]">
+              <div className="p-3 sm:p-5 bg-[#f5efe6]">
                 {cargandoRetos[nivel.id] ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map(i => (
-                      <div key={i} className="border border-[#e8dcca] rounded-lg p-4 animate-pulse bg-white">
+                      <div key={i} className="border border-[#e8dcca] rounded-lg p-3 sm:p-4 animate-pulse bg-white">
                         <div className="flex items-center gap-3">
-                          <div className="w-7 h-7 bg-gray-200 rounded-full"></div>
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 bg-gray-200 rounded-full"></div>
                           <div className="flex-1">
-                            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                            <div className="h-3 sm:h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div className="h-2 sm:h-3 bg-gray-200 rounded w-1/2"></div>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : retosPorNivel[nivel.id]?.length === 0 ? (
-                  <div className="text-center py-12 bg-white rounded-lg border border-[#e8dcca]">
-                    <span className="text-5xl mb-3 block">📭</span>
-                    <p className="text-[#a68a64] font-medium">No hay retos para este nivel aún.</p>
+                  <div className="text-center py-8 sm:py-12 bg-white rounded-lg border border-[#e8dcca]">
+                    <span className="text-3xl sm:text-4xl md:text-5xl mb-2 sm:mb-3 block">📭</span>
+                    <p className="text-sm sm:text-base text-[#a68a64] font-medium">No hay retos para este nivel aún.</p>
                     <p className="text-xs text-[#a68a64] mt-1">Vuelve más tarde o contacta a tu padrino.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {retosPorNivel[nivel.id]?.map((reto, idx) => (
                       <RetoCard 
                         key={reto.id} 
@@ -553,7 +549,7 @@ function DashboardEstudianteGamificado() {
   ), [estudiante, niveles, nivelExpandido, cargandoRetos, retosPorNivel, rango, puntuacionTotal, porcentajeProgreso, nivelesCompletados, racha, toggleNivel, cargarDatos])
 
   // ============================================
-  // CONTENIDO PRINCIPAL MEMORIZADO
+  // CONTENIDO PRINCIPAL MEMORIZADO - RESPONSIVE
   // ============================================
   const mainContent = useMemo(() => (
     <div className="min-h-screen bg-[#f5efe6]">
@@ -565,18 +561,19 @@ function DashboardEstudianteGamificado() {
         estudiante={estudiante}
       />
 
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-72' : 'ml-20'}`}>
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-72' : 'md:ml-20'}`}>
         <div className="min-h-screen overflow-y-auto">
-          <div className="container mx-auto px-4 md:px-6 py-4 md:py-6">
-            <div className="mb-6">
-              <h1 className="text-2xl md:text-3xl font-bold text-[#4a3222]">
+          <div className="container mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
+            {/* Título de sección - responsive */}
+            <div className="mb-4 sm:mb-6">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#4a3222]">
                 {activeTab === 'inicio' && '🗺️ Mapa de Misiones'}
                 {activeTab === 'perfil' && '👤 Mi Perfil'}
                 {activeTab === 'ranking' && '🏆 Ranking'}
                 {activeTab === 'insignias' && '📦 Mis Insignias'}
                 {activeTab === 'ayuda' && '❓ Centro de Ayuda'}
               </h1>
-              <p className="text-[#a68a64] mt-1">
+              <p className="text-xs sm:text-sm md:text-base text-[#a68a64] mt-1">
                 {activeTab === 'inicio' && 'Completa las misiones para ganar insignias y subir de rango'}
                 {activeTab === 'perfil' && 'Gestiona tu información personal y preferencias'}
                 {activeTab === 'ranking' && 'Compara tu progreso con otros estudiantes'}
@@ -610,13 +607,14 @@ function DashboardEstudianteGamificado() {
         </div>
       </div>
 
+      {/* Modal imagen ampliada - responsive */}
       {imagenNivelAmpliada && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
           onClick={() => setImagenNivelAmpliada(null)}
         >
           <button
-            className="absolute top-4 right-4 text-white text-2xl bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition z-10"
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 text-white text-xl sm:text-2xl bg-black bg-opacity-50 rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center hover:bg-opacity-75 transition z-10"
             onClick={() => setImagenNivelAmpliada(null)}
           >
             ✕
@@ -624,7 +622,7 @@ function DashboardEstudianteGamificado() {
           <img
             src={imagenNivelAmpliada}
             alt="Ampliada"
-            className="max-w-[90vw] max-h-[90vh] object-contain cursor-pointer"
+            className="max-w-[95vw] max-h-[95vh] object-contain cursor-pointer"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
@@ -635,9 +633,9 @@ function DashboardEstudianteGamificado() {
   if (loading && !estudiante) {
     return (
       <div className="min-h-screen bg-[#f5efe6] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl animate-bounce mb-4">☕</div>
-          <div className="text-xl text-[#6b4c3a]">Cargando tu aventura...</div>
+        <div className="text-center px-4">
+          <div className="text-5xl sm:text-6xl animate-bounce mb-4">☕</div>
+          <div className="text-lg sm:text-xl text-[#6b4c3a]">Cargando tu aventura...</div>
         </div>
       </div>
     )
@@ -647,7 +645,7 @@ function DashboardEstudianteGamificado() {
 }
 
 // ==========================================
-// COMPONENTE RETOCARD
+// COMPONENTE RETOCARD - RESPONSIVE
 // ==========================================
 function RetoCard({ reto, orden, estudianteId, onActualizar }) {
   const [evidencia, setEvidencia] = useState(null)
@@ -659,6 +657,7 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
   }, [reto.id])
 
   async function verificarEvidencia() {
+    setLoading(true)
     const { data } = await supabase
       .from('evidencias')
       .select(`
@@ -678,11 +677,11 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
     if (!evidencia) return null
     switch (evidencia.estado) {
       case 'pendiente':
-        return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">⏳ Pendiente</span>
+        return <span className="px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs bg-yellow-100 text-yellow-800 rounded-full">⏳ Pendiente</span>
       case 'aprobado':
-        return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">✅ Aprobado</span>
+        return <span className="px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs bg-green-100 text-green-800 rounded-full">✅ Aprobado</span>
       case 'rechazado':
-        return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">❌ Rechazado</span>
+        return <span className="px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs bg-red-100 text-red-800 rounded-full">❌ Rechazado</span>
       default:
         return null
     }
@@ -690,9 +689,9 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
 
   if (loading) {
     return (
-      <div className="border border-[#e8dcca] rounded-lg p-4 animate-pulse bg-white">
-        <div className="h-4 bg-[#e8dcca] rounded w-1/4 mb-2"></div>
-        <div className="h-16 bg-[#f5efe6] rounded"></div>
+      <div className="border border-[#e8dcca] rounded-lg p-3 sm:p-4 animate-pulse bg-white">
+        <div className="h-3 sm:h-4 bg-[#e8dcca] rounded w-1/4 mb-2"></div>
+        <div className="h-12 sm:h-16 bg-[#f5efe6] rounded"></div>
       </div>
     )
   }
@@ -700,25 +699,25 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
   const imagenesEvidencia = evidencia?.evidencias_archivos?.filter(a => a.tipo_archivo === 'imagen').map(a => a.url) || []
 
   return (
-    <div className={`border rounded-lg p-4 transition-all bg-white ${evidencia?.estado === 'aprobado' ? 'border-green-200 bg-green-50' : 'border-[#e8dcca]'}`}>
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex items-start gap-3">
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+    <div className={`border rounded-lg p-3 sm:p-4 transition-all bg-white ${evidencia?.estado === 'aprobado' ? 'border-green-200 bg-green-50' : 'border-[#e8dcca]'}`}>
+      <div className="flex justify-between items-start mb-2 sm:mb-3">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <div className={`w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold flex-shrink-0 ${
             evidencia?.estado === 'aprobado' ? 'bg-green-500 text-white' : 'bg-[#e8dcca] text-[#6b4c3a]'
           }`}>
             {evidencia?.estado === 'aprobado' ? '✓' : orden}
           </div>
           <div className="flex-1">
-            <p className="text-[#4a3222]">{reto.texto}</p>
+            <p className="text-sm sm:text-base text-[#4a3222]">{reto.texto}</p>
             {reto.instruccion_evidencia && (
-              <p className="text-sm text-[#a68a64] mt-1 flex items-start gap-1">
+              <p className="text-xs sm:text-sm text-[#a68a64] mt-1 flex items-start gap-1">
                 <span>💡</span>
                 <span>{reto.instruccion_evidencia}</span>
               </p>
             )}
-            <div className="flex gap-2 mt-2 flex-wrap">
+            <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
               {reto.tipos_archivo?.map(tipo => (
-                <span key={tipo} className="text-xs px-2 py-1 bg-[#f5efe6] rounded-full text-[#6b4c3a]">
+                <span key={tipo} className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 bg-[#f5efe6] rounded-full text-[#6b4c3a]">
                   {tipo === 'imagen' && '🖼️ Imagen'}
                   {tipo === 'video' && '🎥 Video'}
                   {tipo === 'audio' && '🎵 Audio'}
@@ -734,20 +733,20 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
       {evidencia && (
         <div className="mt-3 space-y-2">
           {evidencia.texto_respuesta && (
-            <div className="p-3 bg-[#f5efe6] rounded-lg">
-              <p className="text-sm text-gray-700"><strong>📝 Tu respuesta:</strong> {evidencia.texto_respuesta}</p>
+            <div className="p-2 sm:p-3 bg-[#f5efe6] rounded-lg">
+              <p className="text-xs sm:text-sm text-gray-700"><strong>📝 Tu respuesta:</strong> {evidencia.texto_respuesta}</p>
             </div>
           )}
           {imagenesEvidencia.length > 0 && (
-            <div className="p-3 bg-[#f5efe6] rounded-lg">
-              <p className="text-sm text-gray-600 mb-2"><strong>🖼️ Tus imágenes:</strong></p>
+            <div className="p-2 sm:p-3 bg-[#f5efe6] rounded-lg">
+              <p className="text-xs sm:text-sm text-gray-600 mb-2"><strong>🖼️ Tus imágenes:</strong></p>
               <ImageViewer images={imagenesEvidencia} />
             </div>
           )}
           {evidencia.comentario_padrino && (
-            <div className={`p-3 rounded-lg ${evidencia.estado === 'aprobado' ? 'bg-green-100' : 'bg-red-100'}`}>
-              <p className="text-sm"><strong>💬 Comentario del padrino:</strong> {evidencia.comentario_padrino}</p>
-              {evidencia.puntuacion && <p className="text-sm mt-1"><strong>⭐ Puntuación:</strong> {evidencia.puntuacion}/100</p>}
+            <div className={`p-2 sm:p-3 rounded-lg ${evidencia.estado === 'aprobado' ? 'bg-green-100' : 'bg-red-100'}`}>
+              <p className="text-xs sm:text-sm"><strong>💬 Comentario del padrino:</strong> {evidencia.comentario_padrino}</p>
+              {evidencia.puntuacion && <p className="text-xs sm:text-sm mt-1"><strong>⭐ Puntuación:</strong> {evidencia.puntuacion}/100</p>}
             </div>
           )}
         </div>
@@ -756,7 +755,7 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
       {(!evidencia || evidencia.estado === 'rechazado') && (
         <button
           onClick={() => setMostrarFormulario(!mostrarFormulario)}
-          className="mt-3 text-[#6b4c3a] hover:text-[#4a3222] text-sm font-medium flex items-center gap-1"
+          className="mt-2 sm:mt-3 text-[#6b4c3a] hover:text-[#4a3222] text-xs sm:text-sm font-medium flex items-center gap-1"
         >
           {mostrarFormulario ? '✕ Cancelar' : evidencia ? '✏️ Editar evidencia' : '📤 Subir evidencia'}
         </button>
@@ -779,7 +778,7 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
 }
 
 // ==========================================
-// COMPONENTE FORMULARIO EVIDENCIA
+// COMPONENTE FORMULARIO EVIDENCIA - RESPONSIVE
 // ==========================================
 function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado }) {
   const [texto, setTexto] = useState(evidenciaExistente?.texto_respuesta || '')
@@ -855,51 +854,58 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 p-4 bg-[#f5efe6] rounded-lg">
+    <form onSubmit={handleSubmit} className="mt-3 sm:mt-4 p-3 sm:p-4 bg-[#f5efe6] rounded-lg">
       {requiereTexto && (
-        <div className="mb-4">
-          <label className="block text-[#4a3222] mb-2 font-medium">📝 Tu respuesta:</label>
-          <textarea value={texto} onChange={(e) => setTexto(e.target.value)} className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a]" rows="4" placeholder="Escribe aquí tu respuesta..." required={requiereTexto && archivos.length === 0} />
+        <div className="mb-3 sm:mb-4">
+          <label className="block text-[#4a3222] mb-1 sm:mb-2 font-medium text-sm sm:text-base">📝 Tu respuesta:</label>
+          <textarea 
+            value={texto} 
+            onChange={(e) => setTexto(e.target.value)} 
+            className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a]" 
+            rows="3" 
+            placeholder="Escribe aquí tu respuesta..." 
+            required={requiereTexto && archivos.length === 0} 
+          />
         </div>
       )}
 
       {(puedeSubirImagen || puedeSubirVideo) && (
-        <div className="mb-4">
-          <label className="block text-[#4a3222] mb-2 font-medium">📎 Subir archivo(s):</label>
-          <div className="border-2 border-dashed border-[#d4c4a8] rounded-lg p-4 text-center hover:border-[#6b4c3a] transition cursor-pointer bg-white" onClick={() => document.getElementById('file-input')?.click()}>
-            <input id="file-input" type="file" accept={`${puedeSubirImagen ? 'image/*' : ''} ${puedeSubirVideo ? 'video/*' : ''}`.trim()} multiple onChange={handleArchivosChange} className="hidden" />
-            <div className="text-4xl mb-2">📁</div>
-            <p className="text-[#a68a64]">Haz clic o arrastra archivos aquí</p>
+        <div className="mb-3 sm:mb-4">
+          <label className="block text-[#4a3222] mb-1 sm:mb-2 font-medium text-sm sm:text-base">📎 Subir archivo(s):</label>
+          <div 
+            className="border-2 border-dashed border-[#d4c4a8] rounded-lg p-3 sm:p-4 text-center hover:border-[#6b4c3a] transition cursor-pointer bg-white"
+            onClick={() => document.getElementById('file-input')?.click()}
+          >
+            <input 
+              id="file-input" 
+              type="file" 
+              accept={`${puedeSubirImagen ? 'image/*' : ''} ${puedeSubirVideo ? 'video/*' : ''}`.trim()} 
+              multiple 
+              onChange={handleArchivosChange} 
+              className="hidden" 
+            />
+            <div className="text-3xl sm:text-4xl mb-2">📁</div>
+            <p className="text-xs sm:text-sm text-[#a68a64]">Haz clic o arrastra archivos aquí</p>
           </div>
-          
-          {vistaPrevia.length > 0 && (
-            <div className="mt-3">
-              <label className="block text-sm font-medium text-[#4a3222] mb-2">Vista previa:</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {vistaPrevia.map((item) => (
-                  <div key={item.id} className="relative group border border-[#e8dcca] rounded-lg overflow-hidden bg-white">
-                    {item.tipo === 'imagen' && <img src={item.url} alt={item.nombre} className="w-full h-32 object-cover" />}
-                    {item.tipo === 'video' && <video src={item.url} className="w-full h-32 object-cover" muted />}
-                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button type="button" onClick={() => eliminarArchivo(item.id)} className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition">🗑️</button>
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 truncate">{item.nombre} ({item.tamaño} MB)</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
-      <div className="flex gap-3 mt-4">
-        <button type="submit" disabled={loading} className="flex-1 bg-[#6b4c3a] text-white py-3 rounded-lg hover:bg-[#4a3222] disabled:opacity-50 transition font-medium">
-          {loading ? <span className="flex items-center justify-center gap-2"><span className="animate-spin">⏳</span> Enviando...</span> : '📨 Enviar evidencia'}
+      <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-4">
+        <button 
+          type="submit" 
+          disabled={loading} 
+          className="flex-1 bg-[#6b4c3a] text-white py-2 sm:py-3 rounded-lg hover:bg-[#4a3222] disabled:opacity-50 transition font-medium text-sm sm:text-base"
+        >
+          {loading ? 'Enviando...' : '📨 Enviar evidencia'}
         </button>
-        <button type="button" onClick={() => { setTexto(''); setArchivos([]) }} className="px-4 py-3 bg-[#e8dcca] text-[#6b4c3a] rounded-lg hover:bg-[#d4c4a8] transition">Limpiar</button>
+        <button 
+          type="button" 
+          onClick={() => { setTexto(''); setArchivos([]) }} 
+          className="px-3 sm:px-4 py-2 sm:py-3 bg-[#e8dcca] text-[#6b4c3a] rounded-lg hover:bg-[#d4c4a8] transition text-sm sm:text-base"
+        >
+          Limpiar
+        </button>
       </div>
-      
-      {archivos.length > 0 && <div className="mt-3 p-2 bg-green-50 rounded-lg text-center text-sm text-green-700">✅ {archivos.length} archivo(s) seleccionado(s) listo(s) para subir</div>}
     </form>
   )
 }

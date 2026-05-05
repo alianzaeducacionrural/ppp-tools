@@ -1,38 +1,88 @@
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { Avatar } from './Avatar'
 import { getAvatarById } from '../../data/avatares'
 
 export function Sidebar({ isOpen, onToggle, onLogout, user, estudiante }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  // Detectar cambio de tamaño de pantalla
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Obtener el avatar del estudiante
   const avatarActual = estudiante ? getAvatarById(estudiante.avatar_id || 1) : null
 
   const menuItems = [
-    { id: 'inicio', label: 'Inicio', icono: '🏠', path: '/', descripcion: 'Ver tus misiones' },
-    { id: 'perfil', label: 'Mi Perfil', icono: '👤', path: '/perfil', descripcion: 'Gestiona tu cuenta' },
-    { id: 'ranking', label: 'Ranking', icono: '🏆', path: '/ranking', descripcion: 'Compara tu progreso' },
-    { id: 'insignias', label: 'Mis Insignias', icono: '📦', path: '/insignias', descripcion: 'Tus logros' },
-    { id: 'ayuda', label: 'Ayuda', icono: '❓', path: '/ayuda', descripcion: 'Guía y soporte' }
+    { id: 'inicio', label: 'Inicio', icono: '🏠', path: '/' },
+    { id: 'perfil', label: 'Mi Perfil', icono: '👤', path: '/perfil' },
+    { id: 'ranking', label: 'Ranking', icono: '🏆', path: '/ranking' },
+    { id: 'insignias', label: 'Mis Insignias', icono: '📦', path: '/insignias' },
+    { id: 'ayuda', label: 'Ayuda', icono: '❓', path: '/ayuda' }
   ]
 
+  // Versión móvil: Bottom Navigation (solo íconos)
+  if (isMobile) {
+    return (
+      <>
+        {/* Bottom Navigation Bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-[#5a3e2e] to-[#3d2a1e] text-[#f5efe6] z-20 shadow-lg border-t border-[#8b6b54]">
+          <div className="flex justify-around items-center py-2 px-1">
+            {menuItems.map(item => {
+              const isActive = location.pathname === item.path
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.path)}
+                  className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all ${
+                    isActive ? 'text-[#d4c4a8] scale-110' : 'text-[#f5efe6]/70 hover:text-[#d4c4a8]'
+                  }`}
+                >
+                  <span className="text-2xl">{item.icono}</span>
+                </button>
+              )
+            })}
+            {/* Botón de cerrar sesión en la barra inferior */}
+            <button
+              onClick={onLogout}
+              className="flex flex-col items-center justify-center p-2 rounded-lg transition-all text-[#f5efe6]/70 hover:text-red-400"
+            >
+              <span className="text-2xl">🚪</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Pequeño espacio para que el contenido no quede tapado */}
+        <div className="h-16" />
+      </>
+    )
+  }
+
+  // Versión desktop: Sidebar lateral (como estaba)
   return (
     <>
-      {/* Overlay para móvil */}
-      {isOpen && window.innerWidth < 768 && (
+      {/* Overlay para tablet */}
+      {isOpen && window.innerWidth < 1024 && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
           onClick={onToggle}
         />
       )}
       
-      {/* Sidebar fijo */}
+      {/* Sidebar fijo - desktop */}
       <div className={`
         fixed top-0 left-0 z-20 h-screen
         bg-gradient-to-b from-[#5a3e2e] to-[#3d2a1e]
         text-[#f5efe6] transition-all duration-300 flex flex-col shadow-xl
         ${isOpen ? 'w-72' : 'w-20'}
+        hidden md:flex
       `}>
         {/* Cabecera con logo */}
         <div className="p-4 border-b border-[#8b6b54] flex items-center justify-between">
@@ -55,7 +105,6 @@ export function Sidebar({ isOpen, onToggle, onLogout, user, estudiante }) {
         {isOpen && estudiante && (
           <div className="p-4 border-b border-[#8b6b54] bg-[#4a3222]/50">
             <div className="flex items-center gap-3">
-              {/* Avatar */}
               <div className="w-12 h-12 rounded-full bg-[#d4c4a8] flex items-center justify-center overflow-hidden shadow-md">
                 {avatarActual ? (
                   <Avatar avatar={avatarActual} className="w-full h-full object-cover" />
@@ -94,34 +143,37 @@ export function Sidebar({ isOpen, onToggle, onLogout, user, estudiante }) {
         
         {/* Menú de navegación */}
         <div className="flex-1 py-4 overflow-y-auto">
-          {menuItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => navigate(item.path)}
-              className={`
-                w-full p-3 flex items-center gap-3 transition-all duration-200
-                hover:bg-[#8b6b54] group
-                ${location.pathname === item.path ? 'bg-[#8b6b54] border-l-4 border-[#d4c4a8]' : ''}
-              `}
-              title={!isOpen ? item.label : ''}
-            >
-              <span className="text-xl flex-shrink-0">{item.icono}</span>
-              {isOpen && (
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium">{item.label}</p>
-                  <p className="text-xs text-[#d4c4a8] opacity-75">{item.descripcion}</p>
-                </div>
-              )}
-              {!isOpen && (
-                <div className="absolute left-16 bg-[#3d2a1e] text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-30 pointer-events-none">
-                  {item.label}
-                </div>
-              )}
-            </button>
-          ))}
+          {menuItems.map(item => {
+            const isActive = location.pathname === item.path
+            return (
+              <button
+                key={item.id}
+                onClick={() => navigate(item.path)}
+                className={`
+                  w-full p-3 flex items-center gap-3 transition-all duration-200
+                  hover:bg-[#8b6b54] group
+                  ${isActive ? 'bg-[#8b6b54] border-l-4 border-[#d4c4a8]' : ''}
+                `}
+                title={!isOpen ? item.label : ''}
+              >
+                <span className="text-xl flex-shrink-0">{item.icono}</span>
+                {isOpen && (
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="text-xs text-[#d4c4a8] opacity-75">{item.descripcion}</p>
+                  </div>
+                )}
+                {!isOpen && (
+                  <div className="absolute left-16 bg-[#3d2a1e] text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-30 pointer-events-none">
+                    {item.label}
+                  </div>
+                )}
+              </button>
+            )
+          })}
         </div>
         
-        {/* Botón cerrar sesión */}
+        {/* Botón cerrar sesión en desktop */}
         <div className="border-t border-[#8b6b54]">
           <button
             onClick={onLogout}

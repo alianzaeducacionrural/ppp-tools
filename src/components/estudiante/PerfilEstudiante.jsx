@@ -33,18 +33,15 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
 
   const rango = obtenerRango(puntuacionTotal, estudiante?.tipo_proyecto || 'cafe')
 
-  // Cargar avatar actual del estudiante
   useEffect(() => {
     const avatarActual = getAvatarById(estudiante?.avatar_id || 1)
     setAvatarSeleccionado(avatarActual)
     
-    // Obtener IDs de niveles completados (números de nivel, no IDs)
     const nivelesCompletadosIds = nivelesCompletados?.map(n => n.numero_nivel) || []
     const desbloqueados = getAvataresDesbloqueados(nivelesCompletadosIds)
     setAvataresDesbloqueados(desbloqueados)
   }, [estudiante?.avatar_id, nivelesCompletados])
 
-  // Cargar estadísticas del estudiante
   useEffect(() => {
     cargarEstadisticas()
   }, [estudiante?.id])
@@ -72,7 +69,6 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
     })
   }
 
-  // Cambiar avatar
   const handleCambiarAvatar = async (avatarId) => {
     const avatar = avatares.find(a => a.id === avatarId)
     const estaDesbloqueado = avataresDesbloqueados.some(a => a.id === avatarId)
@@ -178,67 +174,66 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
   const avataresBloqueados = avatares.length - avataresDesbloqueados.length
 
   return (
-    <div className="space-y-6">
-      {/* Tarjeta principal del perfil */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-[#e8dcca]">
-        {/* Banner de rango y avatar */}
-        <div className={`${rango.color} ${rango.border} border-b p-6 text-center`}>
-          {/* Avatar */}
+    <div className="space-y-4 sm:space-y-6">
+      {/* Tarjeta principal del perfil - responsive */}
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden border border-[#e8dcca]">
+        {/* Banner de rango y avatar - responsive */}
+        <div className={`${rango.color} ${rango.border} border-b p-4 sm:p-6 text-center`}>
           <div className="relative inline-block">
-            <div className="w-24 h-24 mx-auto mb-3 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-lg">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-2 sm:mb-3 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-lg">
               <Avatar avatar={avatarSeleccionado} size="xl" className="w-full h-full object-cover rounded-full" />
             </div>
             <button
               onClick={() => setSeleccionandoAvatar(true)}
-              className="absolute bottom-2 right-0 bg-[#6b4c3a] text-white p-1.5 rounded-full hover:bg-[#4a3222] transition shadow-md"
+              className="absolute bottom-0 right-0 bg-[#6b4c3a] text-white p-1.5 rounded-full hover:bg-[#4a3222] transition shadow-md"
               title="Cambiar avatar"
             >
-              ✏️
+              <span className="text-xs sm:text-sm">✏️</span>
             </button>
           </div>
           
-          <h2 className="text-2xl font-bold text-[#4a3222] mt-2">{estudiante?.nombre_completo}</h2>
-          <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full ${rango.color} border ${rango.border}`}>
-            <span className="text-lg">{rango.emoji}</span>
-            <span className="font-medium">{rango.nombre}</span>
-            <span className="text-sm opacity-75">{puntuacionTotal} pts</span>
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[#4a3222] mt-2">{estudiante?.nombre_completo}</h2>
+          <div className={`mt-2 inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 rounded-full ${rango.color} border ${rango.border}`}>
+            <span className="text-base sm:text-lg">{rango.emoji}</span>
+            <span className="text-xs sm:text-sm font-medium">{rango.nombre}</span>
+            <span className="text-xs sm:text-sm opacity-75">{puntuacionTotal} pts</span>
           </div>
         </div>
         
-        <div className="p-6">
-          {/* Estadísticas rápidas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="text-center p-4 bg-[#f5efe6] rounded-xl">
-              <p className="text-2xl font-bold text-[#4a3222]">{stats.totalRetosCompletados}</p>
-              <p className="text-sm text-[#a68a64]">Retos completados</p>
+        <div className="p-4 sm:p-6">
+          {/* Estadísticas rápidas - responsive grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="text-center p-2 sm:p-4 bg-[#f5efe6] rounded-lg sm:rounded-xl">
+              <p className="text-xl sm:text-2xl font-bold text-[#4a3222]">{stats.totalRetosCompletados}</p>
+              <p className="text-xs sm:text-sm text-[#a68a64]">Retos completados</p>
             </div>
-            <div className="text-center p-4 bg-[#f5efe6] rounded-xl">
-              <p className="text-2xl font-bold text-[#4a3222]">{stats.totalInsignias}</p>
-              <p className="text-sm text-[#a68a64]">Insignias obtenidas</p>
+            <div className="text-center p-2 sm:p-4 bg-[#f5efe6] rounded-lg sm:rounded-xl">
+              <p className="text-xl sm:text-2xl font-bold text-[#4a3222]">{stats.totalInsignias}</p>
+              <p className="text-xs sm:text-sm text-[#a68a64]">Insignias obtenidas</p>
             </div>
-            <div className="text-center p-4 bg-[#f5efe6] rounded-xl">
-              <p className="text-2xl font-bold text-[#4a3222]">{stats.promedioPuntuacion}</p>
-              <p className="text-sm text-[#a68a64]">Promedio de puntuación</p>
+            <div className="text-center p-2 sm:p-4 bg-[#f5efe6] rounded-lg sm:rounded-xl">
+              <p className="text-xl sm:text-2xl font-bold text-[#4a3222]">{stats.promedioPuntuacion}</p>
+              <p className="text-xs sm:text-sm text-[#a68a64]">Promedio de puntuación</p>
             </div>
           </div>
 
-          {/* Información personal */}
-          <div className="border-t border-[#e8dcca] pt-6">
-            <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-              <h3 className="text-lg font-semibold text-[#4a3222] flex items-center gap-2">
+          {/* Información personal - responsive */}
+          <div className="border-t border-[#e8dcca] pt-4 sm:pt-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+              <h3 className="text-base sm:text-lg font-semibold text-[#4a3222] flex items-center gap-2">
                 <span>📋</span> Información personal
               </h3>
               {!editando && !cambiandoPassword && (
                 <div className="flex gap-2">
                   <button 
                     onClick={() => setEditando(true)} 
-                    className="text-[#a68a64] hover:text-[#4a3222] text-sm px-3 py-1 rounded-lg hover:bg-[#f5efe6] transition"
+                    className="text-[#a68a64] hover:text-[#4a3222] text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg hover:bg-[#f5efe6] transition"
                   >
                     ✏️ Editar perfil
                   </button>
                   <button 
                     onClick={() => setCambiandoPassword(true)} 
-                    className="text-[#a68a64] hover:text-[#4a3222] text-sm px-3 py-1 rounded-lg hover:bg-[#f5efe6] transition"
+                    className="text-[#a68a64] hover:text-[#4a3222] text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg hover:bg-[#f5efe6] transition"
                   >
                     🔑 Cambiar contraseña
                   </button>
@@ -247,55 +242,55 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
             </div>
 
             {editando && (
-              <form onSubmit={handleSubmit} className="space-y-4 bg-[#f5efe6] p-4 rounded-xl">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 bg-[#f5efe6] p-3 sm:p-4 rounded-lg sm:rounded-xl">
                 <div>
-                  <label className="block text-sm text-[#a68a64] mb-1">Nombre completo *</label>
+                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Nombre completo *</label>
                   <input 
                     type="text" 
                     name="nombre_completo" 
                     value={formData.nombre_completo} 
                     onChange={handleChange} 
-                    className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
                     required 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-[#a68a64] mb-1">Correo electrónico</label>
+                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Correo electrónico</label>
                   <input 
                     type="email" 
                     value={emailEstudiante} 
                     disabled 
-                    className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg bg-gray-100 text-gray-500" 
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg bg-gray-100 text-gray-500" 
                   />
                   <p className="text-xs text-[#a68a64] mt-1">El correo no se puede cambiar</p>
                 </div>
                 <div>
-                  <label className="block text-sm text-[#a68a64] mb-1">Teléfono</label>
+                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Teléfono</label>
                   <input 
                     type="tel" 
                     name="telefono" 
                     value={formData.telefono} 
                     onChange={handleChange} 
-                    className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
                     placeholder="Opcional"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-[#a68a64] mb-1">Dirección</label>
+                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Dirección</label>
                   <input 
                     type="text" 
                     name="direccion" 
                     value={formData.direccion} 
                     onChange={handleChange} 
-                    className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
                     placeholder="Opcional"
                   />
                 </div>
                 <div className="flex gap-3">
-                  <button type="submit" disabled={loading} className="bg-[#6b4c3a] text-white px-4 py-2 rounded-lg hover:bg-[#4a3222] transition">
+                  <button type="submit" disabled={loading} className="bg-[#6b4c3a] text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-[#4a3222] transition text-sm">
                     {loading ? 'Guardando...' : '💾 Guardar cambios'}
                   </button>
-                  <button type="button" onClick={() => setEditando(false)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+                  <button type="button" onClick={() => setEditando(false)} className="bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-300 transition text-sm">
                     Cancelar
                   </button>
                 </div>
@@ -303,35 +298,35 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
             )}
 
             {cambiandoPassword && (
-              <form onSubmit={handlePasswordSubmit} className="space-y-4 bg-[#f5efe6] p-4 rounded-xl">
+              <form onSubmit={handlePasswordSubmit} className="space-y-3 sm:space-y-4 bg-[#f5efe6] p-3 sm:p-4 rounded-lg sm:rounded-xl">
                 <div>
-                  <label className="block text-sm text-[#a68a64] mb-1">Nueva contraseña</label>
+                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Nueva contraseña</label>
                   <input 
                     type="password" 
                     name="nueva_password" 
                     value={passwordData.nueva_password} 
                     onChange={handlePasswordChange} 
-                    className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
                     placeholder="Mínimo 6 caracteres"
                     required 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-[#a68a64] mb-1">Confirmar contraseña</label>
+                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Confirmar contraseña</label>
                   <input 
                     type="password" 
                     name="confirmar_password" 
                     value={passwordData.confirmar_password} 
                     onChange={handlePasswordChange} 
-                    className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
                     required 
                   />
                 </div>
                 <div className="flex gap-3">
-                  <button type="submit" disabled={loading} className="bg-[#6b4c3a] text-white px-4 py-2 rounded-lg hover:bg-[#4a3222] transition">
+                  <button type="submit" disabled={loading} className="bg-[#6b4c3a] text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-[#4a3222] transition text-sm">
                     {loading ? 'Guardando...' : '🔑 Cambiar contraseña'}
                   </button>
-                  <button type="button" onClick={() => setCambiandoPassword(false)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+                  <button type="button" onClick={() => setCambiandoPassword(false)} className="bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-300 transition text-sm">
                     Cancelar
                   </button>
                 </div>
@@ -339,39 +334,31 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
             )}
 
             {!editando && !cambiandoPassword && (
-              <div className="space-y-3 text-sm bg-[#f5efe6] p-4 rounded-xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2 sm:space-y-3 text-sm bg-[#f5efe6] p-3 sm:p-4 rounded-lg sm:rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   <div>
-                    <span className="text-[#a68a64]">📧 Correo:</span>
-                    <p className="font-medium text-[#4a3222]">{emailEstudiante}</p>
+                    <span className="text-xs sm:text-sm text-[#a68a64]">📧 Correo:</span>
+                    <p className="text-sm sm:text-base font-medium text-[#4a3222] break-all">{emailEstudiante}</p>
                   </div>
                   <div>
-                    <span className="text-[#a68a64]">📞 Teléfono:</span>
-                    <p className="font-medium text-[#4a3222]">{estudiante?.telefono || 'No registrado'}</p>
+                    <span className="text-xs sm:text-sm text-[#a68a64]">📞 Teléfono:</span>
+                    <p className="text-sm sm:text-base font-medium text-[#4a3222]">{estudiante?.telefono || 'No registrado'}</p>
                   </div>
                   <div>
-                    <span className="text-[#a68a64]">📍 Dirección:</span>
-                    <p className="font-medium text-[#4a3222]">{estudiante?.direccion || 'No registrada'}</p>
+                    <span className="text-xs sm:text-sm text-[#a68a64]">📍 Dirección:</span>
+                    <p className="text-sm sm:text-base font-medium text-[#4a3222]">{estudiante?.direccion || 'No registrada'}</p>
                   </div>
                   <div>
-                    <span className="text-[#a68a64]">🏫 Institución:</span>
-                    <p className="font-medium text-[#4a3222]">{estudiante?.instituciones?.nombre}</p>
+                    <span className="text-xs sm:text-sm text-[#a68a64]">🏫 Institución:</span>
+                    <p className="text-sm sm:text-base font-medium text-[#4a3222] break-words">{estudiante?.instituciones?.nombre}</p>
                   </div>
                   <div>
-                    <span className="text-[#a68a64]">🌾 Proyecto:</span>
-                    <p className="font-medium text-[#4a3222]">{estudiante?.tipo_proyecto === 'cafe' ? '☕ Escuela y Café' : '🌽 Seguridad Alimentaria'}</p>
+                    <span className="text-xs sm:text-sm text-[#a68a64]">🌾 Proyecto:</span>
+                    <p className="text-sm sm:text-base font-medium text-[#4a3222]">{estudiante?.tipo_proyecto === 'cafe' ? '☕ Escuela y Café' : '🌽 Seguridad Alimentaria'}</p>
                   </div>
                   <div>
-                    <span className="text-[#a68a64]">📚 Grado:</span>
-                    <p className="font-medium text-[#4a3222]">{estudiante?.grado}°</p>
-                  </div>
-                  <div>
-                    <span className="text-[#a68a64]">🏠 Sede:</span>
-                    <p className="font-medium text-[#4a3222]">{estudiante?.sedes?.nombre || 'No especificada'}</p>
-                  </div>
-                  <div>
-                    <span className="text-[#a68a64]">🗓️ Registro:</span>
-                    <p className="font-medium text-[#4a3222]">{new Date(estudiante?.created_at).toLocaleDateString('es-CO')}</p>
+                    <span className="text-xs sm:text-sm text-[#a68a64]">📚 Grado:</span>
+                    <p className="text-sm sm:text-base font-medium text-[#4a3222]">{estudiante?.grado}°</p>
                   </div>
                 </div>
               </div>
@@ -380,19 +367,17 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
         </div>
       </div>
 
-      {/* Modal de selección de avatar */}
+      {/* Modal de selección de avatar - responsive */}
       {seleccionandoAvatar && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-4 sm:p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4 sticky top-0 bg-white pb-2">
-              <h3 className="text-lg font-semibold text-[#4a3222]">Selecciona tu avatar</h3>
-              <button onClick={() => setSeleccionandoAvatar(false)} className="text-gray-500 hover:text-gray-700">
-                ✕
-              </button>
+              <h3 className="text-base sm:text-lg font-semibold text-[#4a3222]">Selecciona tu avatar</h3>
+              <button onClick={() => setSeleccionandoAvatar(false)} className="text-gray-500 hover:text-gray-700 text-xl">✕</button>
             </div>
             
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
+            <div className="mb-4 p-2 sm:p-3 bg-blue-50 rounded-lg">
+              <p className="text-xs sm:text-sm text-blue-800">
                 🔓 {avataresDesbloqueados.length} de {avatares.length} avatares desbloqueados
               </p>
               {avataresBloqueados > 0 && (
@@ -402,7 +387,7 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
               )}
             </div>
             
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
               {avatares.map(avatar => {
                 const estaDesbloqueado = avataresDesbloqueados.some(a => a.id === avatar.id)
                 return (
@@ -410,7 +395,7 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
                     key={avatar.id}
                     onClick={() => handleCambiarAvatar(avatar.id)}
                     disabled={!estaDesbloqueado}
-                    className={`p-3 rounded-xl transition-all ${
+                    className={`p-2 sm:p-3 rounded-xl transition-all ${
                       avatarSeleccionado?.id === avatar.id 
                         ? 'ring-2 ring-[#6b4c3a] bg-[#f5efe6]' 
                         : estaDesbloqueado 
@@ -419,12 +404,12 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
                     }`}
                     title={estaDesbloqueado ? avatar.descripcion : `🔒 ${avatar.descripcion}`}
                   >
-                    <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto flex items-center justify-center">
                       <Avatar avatar={avatar} size="lg" />
                     </div>
-                    <p className="text-xs text-center mt-1 text-[#4a3222]">{avatar.nombre}</p>
+                    <p className="text-[10px] sm:text-xs text-center mt-1 text-[#4a3222]">{avatar.nombre}</p>
                     {!estaDesbloqueado && (
-                      <p className="text-xs text-center text-gray-400">🔒</p>
+                      <p className="text-[10px] sm:text-xs text-center text-gray-400">🔒</p>
                     )}
                   </button>
                 )
