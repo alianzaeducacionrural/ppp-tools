@@ -562,7 +562,7 @@ function DashboardEstudianteGamificado() {
       />
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-72' : 'md:ml-20'}`}>
-        <div className="min-h-screen overflow-y-auto">
+        <div className="min-h-screen overflow-y-auto pb-16 md:pb-0">
           <div className="container mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
             {/* Título de sección - responsive */}
             <div className="mb-4 sm:mb-6">

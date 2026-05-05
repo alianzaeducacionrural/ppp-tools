@@ -28,44 +28,48 @@ export function Sidebar({ isOpen, onToggle, onLogout, user, estudiante }) {
     { id: 'ayuda', label: 'Ayuda', icono: '❓', path: '/ayuda' }
   ]
 
-  // Versión móvil: Bottom Navigation (solo íconos)
+  // Versión móvil: Bottom Navigation
   if (isMobile) {
     return (
       <>
-        {/* Bottom Navigation Bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-[#5a3e2e] to-[#3d2a1e] text-[#f5efe6] z-20 shadow-lg border-t border-[#8b6b54]">
-          <div className="flex justify-around items-center py-2 px-1">
+        {/* Bottom Navigation Bar - más delgado */}
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-[#5a3e2e] to-[#3d2a1e] text-[#f5efe6] z-20 shadow-xl border-t border-[#8b6b54]">
+          <div className="flex justify-around items-center py-1 px-1">
             {menuItems.map(item => {
               const isActive = location.pathname === item.path
               return (
                 <button
                   key={item.id}
                   onClick={() => navigate(item.path)}
-                  className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all ${
-                    isActive ? 'text-[#d4c4a8] scale-110' : 'text-[#f5efe6]/70 hover:text-[#d4c4a8]'
-                  }`}
+                  className={`
+                    flex flex-col items-center justify-center p-2 rounded-lg transition-all
+                    ${isActive 
+                      ? 'bg-[#d4c4a8] text-[#4a3222] shadow-md scale-110' 
+                      : 'text-[#f5efe6]/70 hover:text-[#d4c4a8] hover:bg-[#8b6b54]/30'
+                    }
+                  `}
                 >
-                  <span className="text-2xl">{item.icono}</span>
+                  <span className="text-xl">{item.icono}</span>
                 </button>
               )
             })}
-            {/* Botón de cerrar sesión en la barra inferior */}
+            {/* Botón de cerrar sesión */}
             <button
               onClick={onLogout}
-              className="flex flex-col items-center justify-center p-2 rounded-lg transition-all text-[#f5efe6]/70 hover:text-red-400"
+              className="flex flex-col items-center justify-center p-2 rounded-lg transition-all text-[#f5efe6]/70 hover:text-red-400 hover:bg-[#8b6b54]/30"
             >
-              <span className="text-2xl">🚪</span>
+              <span className="text-xl">🚪</span>
             </button>
           </div>
         </div>
 
-        {/* Pequeño espacio para que el contenido no quede tapado */}
-        <div className="h-16" />
+        {/* Espaciador para que el contenido no quede tapado */}
+        <div className="h-14" />
       </>
     )
   }
 
-  // Versión desktop: Sidebar lateral (como estaba)
+  // Versión desktop: Sidebar lateral
   return (
     <>
       {/* Overlay para tablet */}
@@ -152,15 +156,20 @@ export function Sidebar({ isOpen, onToggle, onLogout, user, estudiante }) {
                 className={`
                   w-full p-3 flex items-center gap-3 transition-all duration-200
                   hover:bg-[#8b6b54] group
-                  ${isActive ? 'bg-[#8b6b54] border-l-4 border-[#d4c4a8]' : ''}
+                  ${isActive 
+                    ? 'bg-[#d4c4a8] text-[#4a3222] shadow-md' 
+                    : 'hover:bg-[#8b6b54]'
+                  }
                 `}
                 title={!isOpen ? item.label : ''}
               >
                 <span className="text-xl flex-shrink-0">{item.icono}</span>
                 {isOpen && (
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium">{item.label}</p>
-                    <p className="text-xs text-[#d4c4a8] opacity-75">{item.descripcion}</p>
+                    <p className={`text-sm font-medium ${isActive ? 'text-[#4a3222]' : 'text-[#f5efe6]'}`}>{item.label}</p>
+                    {!isActive && (
+                      <p className="text-xs text-[#d4c4a8] opacity-75">{item.descripcion}</p>
+                    )}
                   </div>
                 )}
                 {!isOpen && (
