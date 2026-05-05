@@ -141,56 +141,57 @@ export function Registro() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f5efe6] via-[#e8dcca] to-[#d4c4a8] py-8 px-4 relative overflow-hidden">
-      {/* Elementos decorativos flotantes */}
-      <div className="absolute top-20 left-10 text-6xl opacity-5 animate-bounce pointer-events-none">🌱</div>
-      <div className="absolute bottom-20 right-10 text-6xl opacity-5 animate-pulse pointer-events-none">🍃</div>
-      <div className="absolute top-1/3 right-1/4 text-5xl opacity-5 animate-spin-slow pointer-events-none">☕</div>
+    <div className="min-h-screen bg-gradient-to-br from-[#f5efe6] via-[#e8dcca] to-[#d4c4a8] py-6 sm:py-8 px-4 relative overflow-hidden">
+      {/* Elementos decorativos flotantes - responsive */}
+      <div className="absolute top-20 left-10 text-5xl sm:text-6xl opacity-5 animate-bounce pointer-events-none hidden sm:block">🌱</div>
+      <div className="absolute bottom-20 right-10 text-5xl sm:text-6xl opacity-5 animate-pulse pointer-events-none hidden md:block">🍃</div>
+      <div className="absolute top-1/3 right-1/4 text-4xl sm:text-5xl opacity-5 animate-spin-slow pointer-events-none hidden lg:block">☕</div>
 
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-500">
-          <div className="bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] p-6 text-center">
-            <div className="text-4xl mb-2 animate-bounce">📝</div>
-            <h1 className="text-2xl font-bold text-white">Registro de Estudiante</h1>
-            <p className="text-[#d4c4a8] text-sm mt-1">Completa tu aventura cafetera</p>
+          {/* Header - responsive */}
+          <div className="bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] p-4 sm:p-6 text-center">
+            <div className="text-3xl sm:text-4xl mb-2 animate-bounce">📝</div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Registro de Estudiante</h1>
+            <p className="text-[#d4c4a8] text-xs sm:text-sm mt-1">Completa tu aventura cafetera</p>
           </div>
           
-          <div className="p-6 max-h-[70vh] overflow-y-auto">
+          <div className="p-4 sm:p-6 max-h-[70vh] overflow-y-auto">
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-[#4a3222] font-medium mb-1">Nombre completo *</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Nombre completo *</label>
                   <input
                     type="text"
                     name="nombre_completo"
                     value={formData.nombre_completo}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-[#4a3222] font-medium mb-1">Correo electrónico *</label>
+                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Correo electrónico *</label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-[#4a3222] font-medium mb-1">Contraseña *</label>
+                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Contraseña *</label>
                   <div className="relative">
                     <input
                       type={mostrarPassword ? "text" : "password"}
                       name="password"
                       value={formData.password}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 pr-10 border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                      className="w-full px-3 sm:px-4 py-2 pr-10 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                       required
                     />
                     <button
@@ -205,12 +206,12 @@ export function Registro() {
                 </div>
                 
                 <div>
-                  <label className="block text-[#4a3222] font-medium mb-1">Tipo documento</label>
+                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Tipo documento</label>
                   <select
                     name="tipo_documento"
                     value={formData.tipo_documento}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                   >
                     <option value="CC">Cédula de ciudadanía</option>
                     <option value="TI">Tarjeta de identidad</option>
@@ -219,24 +220,25 @@ export function Registro() {
                 </div>
                 
                 <div>
-                  <label className="block text-[#4a3222] font-medium mb-1">Número documento *</label>
+                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Número documento *</label>
                   <input
                     type="text"
                     name="numero_documento"
                     value={formData.numero_documento}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                     required
                   />
                 </div>
                 
+                {/* Ubicación */}
                 <div>
-                  <label className="block text-[#4a3222] font-medium mb-1">Municipio *</label>
+                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Municipio *</label>
                   <select
                     name="municipio_id"
                     value={formData.municipio_id}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                     required
                   >
                     <option value="">Seleccionar municipio</option>
@@ -247,12 +249,12 @@ export function Registro() {
                 </div>
                 
                 <div>
-                  <label className="block text-[#4a3222] font-medium mb-1">Institución *</label>
+                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Institución *</label>
                   <select
                     name="institucion_id"
                     value={formData.institucion_id}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                     required
                     disabled={!formData.municipio_id}
                   >
@@ -264,12 +266,12 @@ export function Registro() {
                 </div>
                 
                 <div>
-                  <label className="block text-[#4a3222] font-medium mb-1">Sede *</label>
+                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Sede *</label>
                   <select
                     name="sede_id"
                     value={formData.sede_id}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                     required
                     disabled={!formData.institucion_id}
                   >
@@ -281,12 +283,12 @@ export function Registro() {
                 </div>
                 
                 <div>
-                  <label className="block text-[#4a3222] font-medium mb-1">Grado *</label>
+                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Grado *</label>
                   <select
                     name="grado"
                     value={formData.grado}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                   >
                     {[4,5,6,7,8,9,10,11].map(g => (
                       <option key={g} value={g}>{g}°</option>
@@ -295,21 +297,21 @@ export function Registro() {
                 </div>
                 
                 <div>
-                  <label className="block text-[#4a3222] font-medium mb-1">Edad *</label>
+                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Edad *</label>
                   <input
                     type="number"
                     name="edad"
                     value={formData.edad}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                     placeholder="4 - 18 años"
                     required
                   />
                 </div>
                 
-                <div className="col-span-2">
-                  <label className="block text-[#4a3222] font-medium mb-2">Tipo de proyecto *</label>
-                  <div className="flex gap-4">
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-[#4a3222] font-medium mb-2 text-sm sm:text-base">Tipo de proyecto *</label>
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <label className="flex items-center gap-2 p-3 border border-[#e8dcca] rounded-xl cursor-pointer hover:bg-[#f5efe6] transition flex-1">
                       <input
                         type="radio"
@@ -319,7 +321,7 @@ export function Registro() {
                         onChange={handleChange}
                         className="w-4 h-4 text-[#6b4c3a]"
                       />
-                      <span className="text-[#4a3222]">☕ Escuela y Café</span>
+                      <span className="text-[#4a3222] text-sm sm:text-base">☕ Escuela y Café</span>
                     </label>
                     <label className="flex items-center gap-2 p-3 border border-[#e8dcca] rounded-xl cursor-pointer hover:bg-[#f5efe6] transition flex-1">
                       <input
@@ -330,7 +332,7 @@ export function Registro() {
                         onChange={handleChange}
                         className="w-4 h-4 text-[#6b4c3a]"
                       />
-                      <span className="text-[#4a3222]">🌽 Seguridad Alimentaria</span>
+                      <span className="text-[#4a3222] text-sm sm:text-base">🌽 Seguridad Alimentaria</span>
                     </label>
                   </div>
                 </div>
@@ -339,7 +341,7 @@ export function Registro() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 mt-4"
+                className="w-full bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-2 sm:py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 mt-4 text-sm sm:text-base"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -352,8 +354,8 @@ export function Registro() {
               </button>
             </form>
             
-            <div className="mt-6 text-center">
-              <p className="text-[#a68a64]">
+            <div className="mt-4 sm:mt-6 text-center">
+              <p className="text-[#a68a64] text-xs sm:text-sm">
                 ¿Ya tienes cuenta?{' '}
                 <button
                   onClick={() => navigate('/login')}
@@ -367,7 +369,6 @@ export function Registro() {
         </div>
       </div>
 
-      {/* Estilos de animación con Tailwind CSS classes */}
       <style>{`
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
