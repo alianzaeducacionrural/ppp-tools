@@ -1,5 +1,43 @@
+# Dependencias
 node_modules/
+
+# Build
 dist/
+dist-ssr/
+build/
+
+# Variables de entorno (contienen credenciales)
 .env
-.DS_Store
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor y SO
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vite / herramientas locales
+*.local
+vite.config.js.timestamp-*
+
+# Claude Code (archivos locales del agente)
+.agents/
+.claude/
+skills-lock.json

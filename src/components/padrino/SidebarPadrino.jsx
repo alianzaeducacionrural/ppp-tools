@@ -2,16 +2,29 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
+const MENU_ITEMS = [
+  { id: 'dashboard',    label: 'Dashboard',    icono: '📊', path: '/padrino',              descripcion: 'Evidencias pendientes' },
+  { id: 'estadisticas', label: 'Estadísticas', icono: '📈', path: '/padrino/estadisticas', descripcion: 'Gráficos y reportes' },
+  { id: 'estudiantes',  label: 'Estudiantes',  icono: '👨‍🎓', path: '/padrino/estudiantes',  descripcion: 'Ver todos los estudiantes' },
+  { id: 'perfil',       label: 'Mi Perfil',    icono: '👤', path: '/padrino/perfil',        descripcion: 'Gestiona tu cuenta' },
+  { id: 'ayuda',        label: 'Ayuda',        icono: '❓', path: '/padrino/ayuda',         descripcion: 'Guía y soporte' },
+]
+
 export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate   = useNavigate()
+  const location   = useLocation()
   const [nombrePadrino, setNombrePadrino] = useState('')
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
   useEffect(() => {
-    if (user?.id) {
-      cargarNombrePadrino()
-    }
-  }, [user])
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize, { passive: true })
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    if (user?.id) cargarNombrePadrino()
+  }, [user?.id])
 
   async function cargarNombrePadrino() {
     const { data } = await supabase
@@ -19,33 +32,60 @@ export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
       .select('nombre')
       .eq('user_id', user.id)
       .single()
-    
-    if (data?.nombre) {
-      setNombrePadrino(data.nombre)
-    } else {
-      // Fallback: usar parte del email
-      setNombrePadrino(user.email?.split('@')[0] || 'Padrino')
-    }
+    setNombrePadrino(data?.nombre || user.email?.split('@')[0] || 'Padrino')
   }
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icono: '📊', path: '/padrino', descripcion: 'Evidencias pendientes' },
-    { id: 'estadisticas', label: 'Estadísticas', icono: '📈', path: '/padrino/estadisticas', descripcion: 'Gráficos y reportes' },
-    { id: 'estudiantes', label: 'Estudiantes', icono: '👨‍🎓', path: '/padrino/estudiantes', descripcion: 'Ver todos los estudiantes' },
-    { id: 'perfil', label: 'Mi Perfil', icono: '👤', path: '/padrino/perfil', descripcion: 'Gestiona tu cuenta' },
-    { id: 'ayuda', label: 'Ayuda', icono: '❓', path: '/padrino/ayuda', descripcion: 'Guía y soporte' }
-  ]
+  // ── MÓVIL: barra de navegación inferior ────────────────────────────────────
+  if (isMobile) {
+    return (
+      <>
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-[#5a3e2e] to-[#3d2a1e] text-[#f5efe6] z-20 shadow-xl border-t border-[#8b6b54]">
+          <div className="flex justify-around items-center py-1 px-1">
+            {MENU_ITEMS.map(item => {
+              const isActive = location.pathname === item.path
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.path)}
+                  className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all ${
+                    isActive
+                      ? 'bg-[#d4c4a8] text-[#4a3222] shadow-md scale-110'
+                      : 'text-[#f5efe6]/70 hover:text-[#d4c4a8] hover:bg-[#8b6b54]/30'
+                  }`}
+                >
+                  <span className="text-xl">{item.icono}</span>
+                </button>
+              )
+            })}
+            <button
+              onClick={onLogout}
+              className="flex flex-col items-center justify-center p-2 rounded-lg transition-all text-[#f5efe6]/70 hover:text-red-400 hover:bg-[#8b6b54]/30"
+            >
+              <span className="text-xl">🚪</span>
+            </button>
+          </div>
+        </div>
+        {/* Espaciador para que el contenido no quede tapado por la barra */}
+        <div className="h-14" />
+      </>
+    )
+  }
 
+  // ── DESKTOP: sidebar lateral ────────────────────────────────────────────────
   return (
     <>
-      {isOpen && window.innerWidth < 768 && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden" onClick={onToggle} />
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-10 lg:hidden"
+          onClick={onToggle}
+        />
       )}
-      
+
       <div className={`
         fixed top-0 left-0 z-20 h-screen
         bg-gradient-to-b from-[#5a3e2e] to-[#3d2a1e]
-        text-[#f5efe6] transition-all duration-300 flex flex-col shadow-xl
+        text-[#f5efe6] transition-all duration-300 flex-col shadow-xl
+        hidden md:flex
         ${isOpen ? 'w-72' : 'w-20'}
       `}>
         {/* Cabecera */}
@@ -64,12 +104,12 @@ export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
             </div>
           )}
         </div>
-        
-        {/* Perfil del usuario - con nombre */}
-        {isOpen && (
+
+        {/* Perfil */}
+        {isOpen ? (
           <div className="p-4 border-b border-[#8b6b54] bg-[#4a3222]/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#d4c4a8] flex items-center justify-center text-2xl">
+              <div className="w-10 h-10 rounded-full bg-[#d4c4a8] flex items-center justify-center text-2xl flex-shrink-0">
                 👨‍🏫
               </div>
               <div className="flex-1 min-w-0">
@@ -78,20 +118,17 @@ export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
               </div>
             </div>
           </div>
-        )}
-        
-        {/* Versión colapsada (solo icono) */}
-        {!isOpen && (
+        ) : (
           <div className="p-3 border-b border-[#8b6b54] flex justify-center">
             <div className="w-10 h-10 rounded-full bg-[#d4c4a8] flex items-center justify-center text-xl">
               👨‍🏫
             </div>
           </div>
         )}
-        
-        {/* Menú */}
+
+        {/* Menú de navegación */}
         <div className="flex-1 py-4 overflow-y-auto">
-          {menuItems.map(item => {
+          {MENU_ITEMS.map(item => {
             const isActive = location.pathname === item.path
             return (
               <button
@@ -99,15 +136,17 @@ export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
                 onClick={() => navigate(item.path)}
                 className={`
                   w-full p-3 flex items-center gap-3 transition-all duration-200
-                  hover:bg-[#8b6b54] group
-                  ${isActive ? 'bg-[#8b6b54] border-l-4 border-[#d4c4a8]' : ''}
+                  hover:bg-[#8b6b54] group relative
+                  ${isActive ? 'bg-[#d4c4a8] text-[#4a3222]' : ''}
                 `}
                 title={!isOpen ? item.label : ''}
               >
                 <span className="text-xl flex-shrink-0">{item.icono}</span>
                 {isOpen && (
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className={`text-sm font-medium ${isActive ? 'text-[#4a3222]' : 'text-[#f5efe6]'}`}>
+                      {item.label}
+                    </p>
                     <p className="text-xs text-[#d4c4a8] opacity-75">{item.descripcion}</p>
                   </div>
                 )}
@@ -120,12 +159,12 @@ export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
             )
           })}
         </div>
-        
+
         {/* Cerrar sesión */}
         <div className="border-t border-[#8b6b54]">
           <button
             onClick={onLogout}
-            className="w-full p-4 flex items-center gap-3 hover:bg-[#8b6b54] transition-colors group"
+            className="w-full p-4 flex items-center gap-3 hover:bg-[#8b6b54] transition-colors group relative"
             title={!isOpen ? 'Cerrar sesión' : ''}
           >
             <span className="text-xl flex-shrink-0">🚪</span>

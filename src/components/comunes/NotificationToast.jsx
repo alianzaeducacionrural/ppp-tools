@@ -8,7 +8,7 @@ export function useEvidenciaNotification(supabase, estudianteId, onActualizar) {
 
     // Suscribirse a cambios en evidencias del estudiante
     const subscription = supabase
-      .channel('evidencias-changes')
+      .channel(`evidencias-changes-${estudianteId}`)
       .on(
         'postgres_changes',
         {

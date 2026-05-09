@@ -23,15 +23,9 @@ export function EstudiantesManager() {
 
     let query = supabase
       .from('estudiantes')
-      .select('*')
+      .select('*, municipios(nombre), instituciones(nombre)')
       .order('created_at', { ascending: false })
 
-    if (filtros.municipio) {
-      query = query.ilike('municipio', `%${filtros.municipio}%`)
-    }
-    if (filtros.institucion) {
-      query = query.ilike('institucion', `%${filtros.institucion}%`)
-    }
     if (filtros.grado) {
       query = query.eq('grado', filtros.grado)
     }
@@ -43,19 +37,30 @@ export function EstudiantesManager() {
 
     if (error) {
       toast.error('Error al cargar estudiantes')
-    } else {
-      setEstudiantes(data || [])
+      setLoading(false)
+      return
     }
+
+    let resultado = data || []
+
+    if (filtros.municipio) {
+      resultado = resultado.filter(e =>
+        e.municipios?.nombre?.toLowerCase().includes(filtros.municipio.toLowerCase())
+      )
+    }
+    if (filtros.institucion) {
+      resultado = resultado.filter(e =>
+        e.instituciones?.nombre?.toLowerCase().includes(filtros.institucion.toLowerCase())
+      )
+    }
+
+    setEstudiantes(resultado)
     setLoading(false)
   }
 
   async function handleDelete(id) {
     if (confirm('¿Eliminar este estudiante? También se eliminarán sus evidencias.')) {
-      const { error } = await supabase
-        .from('estudiantes')
-        .delete()
-        .eq('id', id)
-
+      const { error } = await supabase.from('estudiantes').delete().eq('id', id)
       if (error) {
         toast.error('Error al eliminar')
       } else {
@@ -65,31 +70,33 @@ export function EstudiantesManager() {
     }
   }
 
+  const hayFiltros = filtros.municipio || filtros.institucion || filtros.grado || filtros.tipo_proyecto
+
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-6">Gestión de Estudiantes</h2>
+      <h2 className="text-xl font-semibold text-[#4a3222] mb-6">Gestión de Estudiantes</h2>
 
       {/* Filtros */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+      <div className="bg-white rounded-xl shadow-md border border-[#e8dcca] p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <input
             type="text"
             placeholder="Municipio"
             value={filtros.municipio}
-            onChange={(e) => setFiltros({...filtros, municipio: e.target.value})}
-            className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+            onChange={(e) => setFiltros({ ...filtros, municipio: e.target.value })}
+            className="px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] placeholder-[#a68a64]"
           />
           <input
             type="text"
             placeholder="Institución"
             value={filtros.institucion}
-            onChange={(e) => setFiltros({...filtros, institucion: e.target.value})}
-            className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+            onChange={(e) => setFiltros({ ...filtros, institucion: e.target.value })}
+            className="px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] placeholder-[#a68a64]"
           />
           <select
             value={filtros.grado}
-            onChange={(e) => setFiltros({...filtros, grado: e.target.value})}
-            className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+            onChange={(e) => setFiltros({ ...filtros, grado: e.target.value })}
+            className="px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222]"
           >
             <option value="">Todos los grados</option>
             {[4,5,6,7,8,9,10,11].map(g => (
@@ -98,18 +105,18 @@ export function EstudiantesManager() {
           </select>
           <select
             value={filtros.tipo_proyecto}
-            onChange={(e) => setFiltros({...filtros, tipo_proyecto: e.target.value})}
-            className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+            onChange={(e) => setFiltros({ ...filtros, tipo_proyecto: e.target.value })}
+            className="px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222]"
           >
             <option value="">Todos los proyectos</option>
             <option value="cafe">☕ Escuela y Café</option>
             <option value="alimentacion">🌽 Seguridad Alimentaria</option>
           </select>
         </div>
-        {(filtros.municipio || filtros.institucion || filtros.grado || filtros.tipo_proyecto) && (
+        {hayFiltros && (
           <button
             onClick={() => setFiltros({ municipio: '', institucion: '', grado: '', tipo_proyecto: '' })}
-            className="mt-3 text-sm text-red-600 hover:text-red-700"
+            className="mt-3 text-sm text-red-600 hover:text-red-800 font-medium"
           >
             🧹 Limpiar filtros
           </button>
@@ -117,43 +124,45 @@ export function EstudiantesManager() {
       </div>
 
       {loading ? (
-        <div className="text-center py-8 text-gray-500">Cargando estudiantes...</div>
+        <div className="text-center py-8 text-[#a68a64]">Cargando estudiantes...</div>
       ) : estudiantes.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
+        <div className="bg-white rounded-xl shadow-md border border-[#e8dcca] p-8 text-center">
           <span className="text-4xl block mb-2">📭</span>
-          <p className="text-gray-500">No hay estudiantes registrados</p>
+          <p className="text-[#a68a64]">No hay estudiantes registrados</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-x-auto">
+        <div className="bg-white rounded-xl shadow-md border border-[#e8dcca] overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#f5efe6]">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Nombre</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Documento</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Municipio</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Institución</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Grado</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Proyecto</th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600">Acciones</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-[#6b4c3a]">Nombre</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-[#6b4c3a]">Documento</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-[#6b4c3a]">Municipio</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-[#6b4c3a]">Institución</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-[#6b4c3a]">Grado</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-[#6b4c3a]">Proyecto</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold text-[#6b4c3a]">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {estudiantes.map((est) => (
-                <tr key={est.id} className="border-t hover:bg-gray-50 transition">
-                  <td className="px-4 py-3">{est.nombre_completo}</td>
-                  <td className="px-4 py-3 text-sm">{est.numero_documento}</td>
-                  <td className="px-4 py-3">{est.municipio}</td>
+                <tr key={est.id} className="border-t border-[#e8dcca] hover:bg-[#f5efe6] transition">
+                  <td className="px-4 py-3 font-medium text-[#4a3222]">{est.nombre_completo}</td>
+                  <td className="px-4 py-3 text-sm text-[#6b4c3a]">{est.numero_documento}</td>
+                  <td className="px-4 py-3 text-[#6b4c3a]">{est.municipios?.nombre || '-'}</td>
                   <td className="px-4 py-3">
-                    <div className="max-w-xs truncate" title={est.institucion}>{est.institucion}</div>
+                    <div className="max-w-xs truncate text-[#6b4c3a]" title={est.instituciones?.nombre}>
+                      {est.instituciones?.nombre || '-'}
+                    </div>
                   </td>
-                  <td className="px-4 py-3">{est.grado}°</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-[#6b4c3a]">{est.grado}°</td>
+                  <td className="px-4 py-3 text-[#6b4c3a]">
                     {est.tipo_proyecto === 'cafe' ? '☕ Escuela y Café' : '🌽 Seguridad Alimentaria'}
-                   </td>
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <button
                       onClick={() => setPasswordModal({ open: true, usuario: est })}
-                      className="text-blue-600 hover:text-blue-800 mr-3 text-sm flex items-center gap-1 inline-flex"
+                      className="text-[#6b4c3a] hover:text-[#4a3222] mr-3 text-sm font-medium inline-flex items-center gap-1"
                       title="Cambiar contraseña"
                     >
                       🔑 Cambiar pass
@@ -164,15 +173,14 @@ export function EstudiantesManager() {
                     >
                       🗑️ Eliminar
                     </button>
-                   </td>
-                 </tr>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Modal para cambiar contraseña */}
       {passwordModal.open && (
         <CambiarPasswordModal
           usuario={passwordModal.usuario}

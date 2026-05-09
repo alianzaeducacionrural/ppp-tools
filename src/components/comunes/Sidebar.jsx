@@ -3,30 +3,26 @@ import { useState, useEffect } from 'react'
 import { Avatar } from './Avatar'
 import { getAvatarById } from '../../data/avatares'
 
+const MENU_ITEMS = [
+  { id: 'inicio', label: 'Inicio', icono: '🏠', path: '/' },
+  { id: 'perfil', label: 'Mi Perfil', icono: '👤', path: '/perfil' },
+  { id: 'ranking', label: 'Ranking', icono: '🏆', path: '/ranking' },
+  { id: 'insignias', label: 'Mis Insignias', icono: '📦', path: '/insignias' },
+  { id: 'ayuda', label: 'Ayuda', icono: '❓', path: '/ayuda' }
+]
+
 export function Sidebar({ isOpen, onToggle, onLogout, user, estudiante }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
-  // Detectar cambio de tamaño de pantalla
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-    window.addEventListener('resize', handleResize)
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize, { passive: true })
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Obtener el avatar del estudiante
   const avatarActual = estudiante ? getAvatarById(estudiante.avatar_id || 1) : null
-
-  const menuItems = [
-    { id: 'inicio', label: 'Inicio', icono: '🏠', path: '/' },
-    { id: 'perfil', label: 'Mi Perfil', icono: '👤', path: '/perfil' },
-    { id: 'ranking', label: 'Ranking', icono: '🏆', path: '/ranking' },
-    { id: 'insignias', label: 'Mis Insignias', icono: '📦', path: '/insignias' },
-    { id: 'ayuda', label: 'Ayuda', icono: '❓', path: '/ayuda' }
-  ]
 
   // Versión móvil: Bottom Navigation
   if (isMobile) {
@@ -35,7 +31,7 @@ export function Sidebar({ isOpen, onToggle, onLogout, user, estudiante }) {
         {/* Bottom Navigation Bar - más delgado */}
         <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-[#5a3e2e] to-[#3d2a1e] text-[#f5efe6] z-20 shadow-xl border-t border-[#8b6b54]">
           <div className="flex justify-around items-center py-1 px-1">
-            {menuItems.map(item => {
+            {MENU_ITEMS.map(item => {
               const isActive = location.pathname === item.path
               return (
                 <button
@@ -73,8 +69,8 @@ export function Sidebar({ isOpen, onToggle, onLogout, user, estudiante }) {
   return (
     <>
       {/* Overlay para tablet */}
-      {isOpen && window.innerWidth < 1024 && (
-        <div 
+      {isOpen && (
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
           onClick={onToggle}
         />
@@ -147,7 +143,7 @@ export function Sidebar({ isOpen, onToggle, onLogout, user, estudiante }) {
         
         {/* Menú de navegación */}
         <div className="flex-1 py-4 overflow-y-auto">
-          {menuItems.map(item => {
+          {MENU_ITEMS.map(item => {
             const isActive = location.pathname === item.path
             return (
               <button
@@ -167,9 +163,6 @@ export function Sidebar({ isOpen, onToggle, onLogout, user, estudiante }) {
                 {isOpen && (
                   <div className="flex-1 text-left">
                     <p className={`text-sm font-medium ${isActive ? 'text-[#4a3222]' : 'text-[#f5efe6]'}`}>{item.label}</p>
-                    {!isActive && (
-                      <p className="text-xs text-[#d4c4a8] opacity-75">{item.descripcion}</p>
-                    )}
                   </div>
                 )}
                 {!isOpen && (

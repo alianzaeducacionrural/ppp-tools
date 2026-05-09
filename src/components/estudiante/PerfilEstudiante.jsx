@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
-import { 
-  avatares, 
-  getAvatarById, 
-  getAvataresDesbloqueados
-} from '../../data/avatares'
+import { avatares, getAvatarById, getAvataresDesbloqueados } from '../../data/avatares'
 import { Avatar } from '../comunes/Avatar'
 import { obtenerRango } from '../../data/rangos'
 
@@ -18,398 +14,260 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
     telefono: estudiante?.telefono || '',
     direccion: estudiante?.direccion || ''
   })
-  const [passwordData, setPasswordData] = useState({
-    nueva_password: '',
-    confirmar_password: ''
-  })
+  const [passwordData, setPasswordData] = useState({ nueva_password: '', confirmar_password: '' })
   const [loading, setLoading] = useState(false)
   const [avatarSeleccionado, setAvatarSeleccionado] = useState(null)
   const [avataresDesbloqueados, setAvataresDesbloqueados] = useState([])
-  const [stats, setStats] = useState({
-    totalRetosCompletados: 0,
-    totalInsignias: 0,
-    promedioPuntuacion: 0
-  })
+  const [stats, setStats] = useState({ totalRetosCompletados: 0, totalInsignias: 0, promedioPuntuacion: 0 })
 
   const rango = obtenerRango(puntuacionTotal, estudiante?.tipo_proyecto || 'cafe')
 
   useEffect(() => {
-    const avatarActual = getAvatarById(estudiante?.avatar_id || 1)
-    setAvatarSeleccionado(avatarActual)
-    
-    const nivelesCompletadosIds = nivelesCompletados?.map(n => n.numero_nivel) || []
-    const desbloqueados = getAvataresDesbloqueados(nivelesCompletadosIds)
-    setAvataresDesbloqueados(desbloqueados)
+    setAvatarSeleccionado(getAvatarById(estudiante?.avatar_id || 1))
+    const ids = nivelesCompletados?.map(n => n.numero_nivel) || []
+    setAvataresDesbloqueados(getAvataresDesbloqueados(ids))
   }, [estudiante?.avatar_id, nivelesCompletados])
 
-  useEffect(() => {
-    cargarEstadisticas()
-  }, [estudiante?.id])
+  useEffect(() => { if (estudiante?.id) cargarEstadisticas() }, [estudiante?.id])
 
   async function cargarEstadisticas() {
-    const { data: evidencias } = await supabase
-      .from('evidencias')
-      .select('puntuacion')
-      .eq('estudiante_id', estudiante?.id)
-      .eq('estado', 'aprobado')
-
+    const [{ data: evidencias }, { count: insigniasCount }] = await Promise.all([
+      supabase.from('evidencias').select('puntuacion').eq('estudiante_id', estudiante?.id).eq('estado', 'aprobado'),
+      supabase.from('insignias_obtenidas').select('*', { count: 'exact', head: true }).eq('estudiante_id', estudiante?.id)
+    ])
     const retosCompletados = evidencias?.length || 0
-    const sumaPuntuaciones = evidencias?.reduce((sum, e) => sum + (e.puntuacion || 0), 0)
-    const promedio = retosCompletados > 0 ? Math.round(sumaPuntuaciones / retosCompletados) : 0
-
-    const { count: insigniasCount } = await supabase
-      .from('insignias_obtenidas')
-      .select('*', { count: 'exact', head: true })
-      .eq('estudiante_id', estudiante?.id)
-
+    const suma = evidencias?.reduce((s, e) => s + (e.puntuacion || 0), 0) || 0
     setStats({
       totalRetosCompletados: retosCompletados,
       totalInsignias: insigniasCount || 0,
-      promedioPuntuacion: promedio
+      promedioPuntuacion: retosCompletados > 0 ? Math.round(suma / retosCompletados) : 0
     })
   }
 
   const handleCambiarAvatar = async (avatarId) => {
     const avatar = avatares.find(a => a.id === avatarId)
-    const estaDesbloqueado = avataresDesbloqueados.some(a => a.id === avatarId)
-    
-    if (!estaDesbloqueado) {
-      toast.error(`❌ El avatar "${avatar?.nombre}" aún no está desbloqueado. Completa más niveles para obtenerlo.`)
+    if (!avataresDesbloqueados.some(a => a.id === avatarId)) {
+      toast.error(`❌ "${avatar?.nombre}" aún no está desbloqueado. Completa más niveles.`)
       return
     }
-    
     setLoading(true)
-    
-    const { error } = await supabase
-      .from('estudiantes')
-      .update({ avatar_id: avatarId })
-      .eq('id', estudiante.id)
-
-    if (error) {
-      toast.error('Error al cambiar avatar')
-    } else {
-      toast.success('Avatar actualizado correctamente')
-      setSeleccionandoAvatar(false)
-      setAvatarSeleccionado(getAvatarById(avatarId))
-      onActualizar()
-    }
+    const { error } = await supabase.from('estudiantes').update({ avatar_id: avatarId }).eq('id', estudiante.id)
+    if (error) { toast.error('Error al cambiar avatar') }
+    else { toast.success('Avatar actualizado'); setSeleccionandoAvatar(false); setAvatarSeleccionado(getAvatarById(avatarId)); onActualizar() }
     setLoading(false)
-  }
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
-
-  const handlePasswordChange = (e) => {
-    setPasswordData({ ...passwordData, [e.target.name]: e.target.value })
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-
     const updateData = {}
-    if (formData.nombre_completo !== estudiante?.nombre_completo) {
-      updateData.nombre_completo = formData.nombre_completo
-    }
-    if (formData.telefono !== estudiante?.telefono) {
-      updateData.telefono = formData.telefono || null
-    }
-    if (formData.direccion !== estudiante?.direccion) {
-      updateData.direccion = formData.direccion || null
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      toast.info('No hay cambios para guardar')
-      setEditando(false)
-      setLoading(false)
-      return
-    }
-
-    const { error } = await supabase
-      .from('estudiantes')
-      .update(updateData)
-      .eq('id', estudiante.id)
-
-    if (error) {
-      toast.error('Error al actualizar perfil: ' + error.message)
-    } else {
-      toast.success('Perfil actualizado correctamente')
-      setEditando(false)
-      onActualizar()
-    }
+    if (formData.nombre_completo !== estudiante?.nombre_completo) updateData.nombre_completo = formData.nombre_completo
+    if (formData.telefono !== estudiante?.telefono) updateData.telefono = formData.telefono || null
+    if (formData.direccion !== estudiante?.direccion) updateData.direccion = formData.direccion || null
+    if (Object.keys(updateData).length === 0) { toast.info('No hay cambios'); setEditando(false); setLoading(false); return }
+    const { error } = await supabase.from('estudiantes').update(updateData).eq('id', estudiante.id)
+    if (error) { toast.error('Error al actualizar: ' + error.message) }
+    else { toast.success('Perfil actualizado'); setEditando(false); onActualizar() }
     setLoading(false)
   }
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault()
-    
-    if (passwordData.nueva_password.length < 6) {
-      toast.error('La contraseña debe tener al menos 6 caracteres')
-      return
-    }
-    
-    if (passwordData.nueva_password !== passwordData.confirmar_password) {
-      toast.error('Las contraseñas no coinciden')
-      return
-    }
-
+    if (passwordData.nueva_password.length < 6) { toast.error('Mínimo 6 caracteres'); return }
+    if (passwordData.nueva_password !== passwordData.confirmar_password) { toast.error('Las contraseñas no coinciden'); return }
     setLoading(true)
-
-    const { error } = await supabase.auth.updateUser({
-      password: passwordData.nueva_password
-    })
-
-    if (error) {
-      toast.error('Error al cambiar contraseña: ' + error.message)
-    } else {
-      toast.success('Contraseña actualizada correctamente')
-      setCambiandoPassword(false)
-      setPasswordData({ nueva_password: '', confirmar_password: '' })
-    }
+    const { error } = await supabase.auth.updateUser({ password: passwordData.nueva_password })
+    if (error) { toast.error('Error: ' + error.message) }
+    else { toast.success('Contraseña actualizada'); setCambiandoPassword(false); setPasswordData({ nueva_password: '', confirmar_password: '' }) }
     setLoading(false)
   }
 
-  const emailEstudiante = estudiante?.email || estudiante?.user?.email || 'No registrado'
+  const emailEstudiante = estudiante?.email || 'No registrado'
   const avataresBloqueados = avatares.length - avataresDesbloqueados.length
 
+  const inputCls = "w-full px-3 py-2.5 text-sm border border-[#e8dcca] rounded-xl focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white transition"
+  const labelCls = "block text-[10px] font-bold text-[#a68a64] uppercase tracking-widest mb-1.5"
+
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Tarjeta principal del perfil - responsive */}
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden border border-[#e8dcca]">
-        {/* Banner de rango y avatar - responsive */}
-        <div className={`${rango.color} ${rango.border} border-b p-4 sm:p-6 text-center`}>
+    <div className="space-y-4 max-w-2xl mx-auto">
+
+      {/* ── TARJETA PRINCIPAL ── */}
+      <div className="bg-white rounded-2xl shadow-md border border-[#e8dcca] overflow-hidden">
+
+        {/* Banner */}
+        <div className="relative bg-gradient-to-br from-[#2c1810] via-[#4a3222] to-[#7a5c48] px-6 pt-10 pb-14 text-center overflow-hidden">
+          <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/5 pointer-events-none" />
+          <div className="absolute -bottom-6 -left-8 w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
+          <div className="absolute top-3 left-4 text-6xl text-white/[0.06] select-none pointer-events-none">☕</div>
+
           <div className="relative inline-block">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-2 sm:mb-3 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-lg">
+            <div className="w-24 h-24 mx-auto rounded-full overflow-hidden border-[3px] border-white/30 shadow-xl bg-white/20">
               <Avatar avatar={avatarSeleccionado} size="xl" className="w-full h-full object-cover rounded-full" />
             </div>
             <button
               onClick={() => setSeleccionandoAvatar(true)}
-              className="absolute bottom-0 right-0 bg-[#6b4c3a] text-white p-1.5 rounded-full hover:bg-[#4a3222] transition shadow-md"
+              className="absolute bottom-0 right-0 bg-white text-[#6b4c3a] p-1.5 rounded-full hover:bg-[#f5efe6] transition shadow-md border border-[#e8dcca]"
               title="Cambiar avatar"
             >
-              <span className="text-xs sm:text-sm">✏️</span>
+              <span className="text-xs">✏️</span>
             </button>
           </div>
-          
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[#4a3222] mt-2">{estudiante?.nombre_completo}</h2>
-          <div className={`mt-2 inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 rounded-full ${rango.color} border ${rango.border}`}>
-            <span className="text-base sm:text-lg">{rango.emoji}</span>
-            <span className="text-xs sm:text-sm font-medium">{rango.nombre}</span>
-            <span className="text-xs sm:text-sm opacity-75">{puntuacionTotal} pts</span>
+
+          <h2 className="text-white font-bold text-lg mt-3 drop-shadow">{estudiante?.nombre_completo}</h2>
+          <p className="text-white/50 text-xs mt-0.5">{estudiante?.grado}° · {estudiante?.instituciones?.nombre}</p>
+          <div className="mt-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm">
+            <span className="text-sm">{rango.emoji}</span>
+            <span className="text-white text-xs font-semibold">{rango.nombre}</span>
+            <span className="text-white/50 text-xs">{puntuacionTotal} pts</span>
           </div>
         </div>
-        
-        <div className="p-4 sm:p-6">
-          {/* Estadísticas rápidas - responsive grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="text-center p-2 sm:p-4 bg-[#f5efe6] rounded-lg sm:rounded-xl">
-              <p className="text-xl sm:text-2xl font-bold text-[#4a3222]">{stats.totalRetosCompletados}</p>
-              <p className="text-xs sm:text-sm text-[#a68a64]">Retos completados</p>
-            </div>
-            <div className="text-center p-2 sm:p-4 bg-[#f5efe6] rounded-lg sm:rounded-xl">
-              <p className="text-xl sm:text-2xl font-bold text-[#4a3222]">{stats.totalInsignias}</p>
-              <p className="text-xs sm:text-sm text-[#a68a64]">Insignias obtenidas</p>
-            </div>
-            <div className="text-center p-2 sm:p-4 bg-[#f5efe6] rounded-lg sm:rounded-xl">
-              <p className="text-xl sm:text-2xl font-bold text-[#4a3222]">{stats.promedioPuntuacion}</p>
-              <p className="text-xs sm:text-sm text-[#a68a64]">Promedio de puntuación</p>
-            </div>
-          </div>
 
-          {/* Información personal - responsive */}
-          <div className="border-t border-[#e8dcca] pt-4 sm:pt-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-              <h3 className="text-base sm:text-lg font-semibold text-[#4a3222] flex items-center gap-2">
-                <span>📋</span> Información personal
-              </h3>
-              {!editando && !cambiandoPassword && (
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setEditando(true)} 
-                    className="text-[#a68a64] hover:text-[#4a3222] text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg hover:bg-[#f5efe6] transition"
-                  >
-                    ✏️ Editar perfil
-                  </button>
-                  <button 
-                    onClick={() => setCambiandoPassword(true)} 
-                    className="text-[#a68a64] hover:text-[#4a3222] text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-lg hover:bg-[#f5efe6] transition"
-                  >
-                    🔑 Cambiar contraseña
-                  </button>
-                </div>
-              )}
+        {/* Stats flotantes */}
+        <div className="mx-4 -mt-6 relative z-10 bg-white rounded-2xl border border-[#e8dcca] shadow-lg grid grid-cols-3 divide-x divide-[#e8dcca]">
+          {[
+            { icon: '✅', bg: 'bg-emerald-50', border: 'border-emerald-100', value: stats.totalRetosCompletados, label: 'Retos' },
+            { icon: '🏆', bg: 'bg-amber-50',   border: 'border-amber-100',   value: stats.totalInsignias,       label: 'Insignias' },
+            { icon: '⭐', bg: 'bg-sky-50',      border: 'border-sky-100',     value: stats.promedioPuntuacion,   label: 'Promedio' },
+          ].map(({ icon, bg, border, value, label }) => (
+            <div key={label} className="px-3 py-4 text-center">
+              <div className={`w-9 h-9 rounded-xl ${bg} border ${border} flex items-center justify-center mx-auto mb-1.5 text-base`}>{icon}</div>
+              <p className="text-xl font-bold text-[#4a3222]">{value}</p>
+              <p className="text-[10px] text-[#a68a64] font-medium">{label}</p>
             </div>
+          ))}
+        </div>
 
-            {editando && (
-              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 bg-[#f5efe6] p-3 sm:p-4 rounded-lg sm:rounded-xl">
-                <div>
-                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Nombre completo *</label>
-                  <input 
-                    type="text" 
-                    name="nombre_completo" 
-                    value={formData.nombre_completo} 
-                    onChange={handleChange} 
-                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
-                    required 
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Correo electrónico</label>
-                  <input 
-                    type="email" 
-                    value={emailEstudiante} 
-                    disabled 
-                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg bg-gray-100 text-gray-500" 
-                  />
-                  <p className="text-xs text-[#a68a64] mt-1">El correo no se puede cambiar</p>
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Teléfono</label>
-                  <input 
-                    type="tel" 
-                    name="telefono" 
-                    value={formData.telefono} 
-                    onChange={handleChange} 
-                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
-                    placeholder="Opcional"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Dirección</label>
-                  <input 
-                    type="text" 
-                    name="direccion" 
-                    value={formData.direccion} 
-                    onChange={handleChange} 
-                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
-                    placeholder="Opcional"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button type="submit" disabled={loading} className="bg-[#6b4c3a] text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-[#4a3222] transition text-sm">
-                    {loading ? 'Guardando...' : '💾 Guardar cambios'}
-                  </button>
-                  <button type="button" onClick={() => setEditando(false)} className="bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-300 transition text-sm">
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {cambiandoPassword && (
-              <form onSubmit={handlePasswordSubmit} className="space-y-3 sm:space-y-4 bg-[#f5efe6] p-3 sm:p-4 rounded-lg sm:rounded-xl">
-                <div>
-                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Nueva contraseña</label>
-                  <input 
-                    type="password" 
-                    name="nueva_password" 
-                    value={passwordData.nueva_password} 
-                    onChange={handlePasswordChange} 
-                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
-                    placeholder="Mínimo 6 caracteres"
-                    required 
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm text-[#a68a64] mb-1">Confirmar contraseña</label>
-                  <input 
-                    type="password" 
-                    name="confirmar_password" 
-                    value={passwordData.confirmar_password} 
-                    onChange={handlePasswordChange} 
-                    className="w-full px-3 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none bg-white" 
-                    required 
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button type="submit" disabled={loading} className="bg-[#6b4c3a] text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-[#4a3222] transition text-sm">
-                    {loading ? 'Guardando...' : '🔑 Cambiar contraseña'}
-                  </button>
-                  <button type="button" onClick={() => setCambiandoPassword(false)} className="bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-300 transition text-sm">
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            )}
-
+        {/* Sección de info */}
+        <div className="p-5 mt-3">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xs font-bold text-[#4a3222] uppercase tracking-widest">Información personal</h3>
             {!editando && !cambiandoPassword && (
-              <div className="space-y-2 sm:space-y-3 text-sm bg-[#f5efe6] p-3 sm:p-4 rounded-lg sm:rounded-xl">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                  <div>
-                    <span className="text-xs sm:text-sm text-[#a68a64]">📧 Correo:</span>
-                    <p className="text-sm sm:text-base font-medium text-[#4a3222] break-all">{emailEstudiante}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs sm:text-sm text-[#a68a64]">📞 Teléfono:</span>
-                    <p className="text-sm sm:text-base font-medium text-[#4a3222]">{estudiante?.telefono || 'No registrado'}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs sm:text-sm text-[#a68a64]">📍 Dirección:</span>
-                    <p className="text-sm sm:text-base font-medium text-[#4a3222]">{estudiante?.direccion || 'No registrada'}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs sm:text-sm text-[#a68a64]">🏫 Institución:</span>
-                    <p className="text-sm sm:text-base font-medium text-[#4a3222] break-words">{estudiante?.instituciones?.nombre}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs sm:text-sm text-[#a68a64]">🌾 Proyecto:</span>
-                    <p className="text-sm sm:text-base font-medium text-[#4a3222]">{estudiante?.tipo_proyecto === 'cafe' ? '☕ Escuela y Café' : '🌽 Seguridad Alimentaria'}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs sm:text-sm text-[#a68a64]">📚 Grado:</span>
-                    <p className="text-sm sm:text-base font-medium text-[#4a3222]">{estudiante?.grado}°</p>
-                  </div>
-                </div>
+              <div className="flex gap-2">
+                <button onClick={() => setEditando(true)} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#f5efe6] text-[#6b4c3a] hover:bg-[#e8dcca] transition">✏️ Editar</button>
+                <button onClick={() => setCambiandoPassword(true)} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[#f5efe6] text-[#6b4c3a] hover:bg-[#e8dcca] transition">🔑 Contraseña</button>
               </div>
             )}
           </div>
+
+          {/* Formulario editar */}
+          {editando && (
+            <form onSubmit={handleSubmit} className="space-y-3 bg-[#faf7f3] p-4 rounded-2xl border border-[#e8dcca]">
+              <div>
+                <label className={labelCls}>Nombre completo *</label>
+                <input type="text" name="nombre_completo" value={formData.nombre_completo} onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} className={inputCls} required />
+              </div>
+              <div>
+                <label className={labelCls}>Correo electrónico</label>
+                <input type="email" value={emailEstudiante} disabled className="w-full px-3 py-2.5 text-sm border border-[#e8dcca] rounded-xl bg-[#f0f0f0] text-gray-400" />
+                <p className="text-[10px] text-[#a68a64] mt-1">No se puede cambiar</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Teléfono</label>
+                  <input type="tel" name="telefono" value={formData.telefono} onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} className={inputCls} placeholder="Opcional" />
+                </div>
+                <div>
+                  <label className={labelCls}>Dirección</label>
+                  <input type="text" name="direccion" value={formData.direccion} onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} className={inputCls} placeholder="Opcional" />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button type="submit" disabled={loading} className="flex-1 bg-[#6b4c3a] text-white py-2.5 rounded-xl hover:bg-[#4a3222] transition text-sm font-medium disabled:opacity-50">
+                  {loading ? '⏳ Guardando...' : '💾 Guardar cambios'}
+                </button>
+                <button type="button" onClick={() => setEditando(false)} className="px-4 py-2.5 bg-[#e8dcca] text-[#6b4c3a] rounded-xl hover:bg-[#d4c4a8] transition text-sm font-medium">Cancelar</button>
+              </div>
+            </form>
+          )}
+
+          {/* Formulario contraseña */}
+          {cambiandoPassword && (
+            <form onSubmit={handlePasswordSubmit} className="space-y-3 bg-[#faf7f3] p-4 rounded-2xl border border-[#e8dcca]">
+              <div>
+                <label className={labelCls}>Nueva contraseña</label>
+                <input type="password" name="nueva_password" value={passwordData.nueva_password} onChange={e => setPasswordData({...passwordData, [e.target.name]: e.target.value})} className={inputCls} placeholder="Mínimo 6 caracteres" required />
+              </div>
+              <div>
+                <label className={labelCls}>Confirmar contraseña</label>
+                <input type="password" name="confirmar_password" value={passwordData.confirmar_password} onChange={e => setPasswordData({...passwordData, [e.target.name]: e.target.value})} className={inputCls} required />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button type="submit" disabled={loading} className="flex-1 bg-[#6b4c3a] text-white py-2.5 rounded-xl hover:bg-[#4a3222] transition text-sm font-medium disabled:opacity-50">
+                  {loading ? '⏳ Cambiando...' : '🔑 Cambiar contraseña'}
+                </button>
+                <button type="button" onClick={() => setCambiandoPassword(false)} className="px-4 py-2.5 bg-[#e8dcca] text-[#6b4c3a] rounded-xl hover:bg-[#d4c4a8] transition text-sm font-medium">Cancelar</button>
+              </div>
+            </form>
+          )}
+
+          {/* Vista de datos */}
+          {!editando && !cambiandoPassword && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {[
+                { icon: '📧', label: 'Correo', value: emailEstudiante, full: false },
+                { icon: '📞', label: 'Teléfono', value: estudiante?.telefono || 'No registrado', full: false },
+                { icon: '🏫', label: 'Institución', value: estudiante?.instituciones?.nombre, full: true },
+                { icon: '📍', label: 'Municipio', value: estudiante?.municipios?.nombre || '—', full: false },
+                { icon: '🌾', label: 'Proyecto', value: estudiante?.tipo_proyecto === 'cafe' ? '☕ Escuela y Café' : '🌽 Seg. Alimentaria', full: false },
+                { icon: '📚', label: 'Grado', value: `${estudiante?.grado}°`, full: false },
+              ].map(({ icon, label, value, full }) => (
+                <div key={label} className={`${full ? 'sm:col-span-2' : ''} bg-[#faf7f3] rounded-xl p-3 border border-[#e8dcca]`}>
+                  <p className="text-[10px] font-bold text-[#a68a64] uppercase tracking-widest mb-0.5">{icon} {label}</p>
+                  <p className="text-sm font-medium text-[#4a3222] break-words">{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Modal de selección de avatar - responsive */}
+      {/* ── MODAL AVATAR ── */}
       {seleccionandoAvatar && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-4 sm:p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4 sticky top-0 bg-white pb-2">
-              <h3 className="text-base sm:text-lg font-semibold text-[#4a3222]">Selecciona tu avatar</h3>
-              <button onClick={() => setSeleccionandoAvatar(false)} className="text-gray-500 hover:text-gray-700 text-xl">✕</button>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-sm w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-base font-bold text-[#4a3222]">Elige tu avatar</h3>
+                <p className="text-xs text-[#a68a64]">{avataresDesbloqueados.length} de {avatares.length} desbloqueados</p>
+              </div>
+              <button onClick={() => setSeleccionandoAvatar(false)} className="w-8 h-8 rounded-full bg-[#f5efe6] text-[#6b4c3a] hover:bg-[#e8dcca] transition flex items-center justify-center text-sm font-bold">✕</button>
             </div>
-            
-            <div className="mb-4 p-2 sm:p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs sm:text-sm text-blue-800">
-                🔓 {avataresDesbloqueados.length} de {avatares.length} avatares desbloqueados
-              </p>
-              {avataresBloqueados > 0 && (
-                <p className="text-xs text-blue-600 mt-1">
-                  Completa niveles para desbloquear {avataresBloqueados} avatares más
-                </p>
-              )}
-            </div>
-            
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
+
+            {avataresBloqueados > 0 && (
+              <div className="mb-3 p-2.5 bg-amber-50 rounded-xl border border-amber-100">
+                <p className="text-xs text-amber-800">🔓 Completa niveles para desbloquear {avataresBloqueados} avatar{avataresBloqueados > 1 ? 'es' : ''} más</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-2">
               {avatares.map(avatar => {
-                const estaDesbloqueado = avataresDesbloqueados.some(a => a.id === avatar.id)
+                const desbloqueado = avataresDesbloqueados.some(a => a.id === avatar.id)
+                const isSelected = avatarSeleccionado?.id === avatar.id
                 return (
                   <button
                     key={avatar.id}
                     onClick={() => handleCambiarAvatar(avatar.id)}
-                    disabled={!estaDesbloqueado}
-                    className={`p-2 sm:p-3 rounded-xl transition-all ${
-                      avatarSeleccionado?.id === avatar.id 
-                        ? 'ring-2 ring-[#6b4c3a] bg-[#f5efe6]' 
-                        : estaDesbloqueado 
-                          ? 'hover:bg-gray-100' 
-                          : 'opacity-40 cursor-not-allowed grayscale'
+                    disabled={!desbloqueado}
+                    className={`relative p-2 rounded-xl transition-all text-center ${
+                      isSelected ? 'ring-2 ring-[#6b4c3a] bg-[#f5efe6]'
+                      : desbloqueado ? 'hover:bg-[#faf7f3] hover:ring-1 hover:ring-[#e8dcca]'
+                      : 'opacity-40 cursor-not-allowed'
                     }`}
-                    title={estaDesbloqueado ? avatar.descripcion : `🔒 ${avatar.descripcion}`}
+                    title={desbloqueado ? avatar.nombre : '🔒 Bloqueado'}
                   >
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto flex items-center justify-center">
+                    <div className={`w-12 h-12 mx-auto flex items-center justify-center relative ${!desbloqueado ? 'grayscale' : ''}`}>
                       <Avatar avatar={avatar} size="lg" />
+                      {!desbloqueado && (
+                        <div className="absolute inset-0 flex items-end justify-end">
+                          <span className="text-sm bg-white rounded-full leading-none p-0.5">🔒</span>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-[10px] sm:text-xs text-center mt-1 text-[#4a3222]">{avatar.nombre}</p>
-                    {!estaDesbloqueado && (
-                      <p className="text-[10px] sm:text-xs text-center text-gray-400">🔒</p>
+                    <p className="text-[10px] text-[#4a3222] mt-1 font-medium truncate">{avatar.nombre}</p>
+                    {isSelected && (
+                      <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#6b4c3a] rounded-full flex items-center justify-center">
+                        <span className="text-white text-[8px] font-bold">✓</span>
+                      </div>
                     )}
                   </button>
                 )

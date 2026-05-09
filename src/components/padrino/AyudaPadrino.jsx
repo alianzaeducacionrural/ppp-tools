@@ -71,27 +71,39 @@ export function AyudaPadrino() {
       contenido: (
         <div className="space-y-3">
           <details className="bg-white rounded-xl p-4 border border-[#e8dcca] group">
-            <summary className="cursor-pointer font-medium text-[#6b4c3a] hover:text-[#4a3222] transition">
-              ¿Cómo reviso una evidencia?
+            <summary className="cursor-pointer font-medium text-sm text-[#6b4c3a] hover:text-[#4a3222] transition flex items-center justify-between">
+              <span>¿Cómo reviso una evidencia?</span>
+              <span className="text-[#a68a64] group-open:rotate-180 transition-transform text-lg">▼</span>
             </summary>
             <p className="mt-3 text-sm text-[#a68a64] pl-4 border-l-2 border-[#e8dcca]">
               Ve al Dashboard, selecciona la evidencia pendiente, revisa el contenido y asigna puntuación y comentario.
             </p>
           </details>
           <details className="bg-white rounded-xl p-4 border border-[#e8dcca] group">
-            <summary className="cursor-pointer font-medium text-[#6b4c3a] hover:text-[#4a3222] transition">
-              ¿Puedo editar una calificación?
+            <summary className="cursor-pointer font-medium text-sm text-[#6b4c3a] hover:text-[#4a3222] transition flex items-center justify-between">
+              <span>¿Puedo editar una calificación?</span>
+              <span className="text-[#a68a64] group-open:rotate-180 transition-transform text-lg">▼</span>
             </summary>
             <p className="mt-3 text-sm text-[#a68a64] pl-4 border-l-2 border-[#e8dcca]">
               No, una vez aprobada o rechazada, la evidencia no se puede modificar. Si hay error, contacta al administrador.
             </p>
           </details>
           <details className="bg-white rounded-xl p-4 border border-[#e8dcca] group">
-            <summary className="cursor-pointer font-medium text-[#6b4c3a] hover:text-[#4a3222] transition">
-              ¿Cómo cambio mi contraseña?
+            <summary className="cursor-pointer font-medium text-sm text-[#6b4c3a] hover:text-[#4a3222] transition flex items-center justify-between">
+              <span>¿Cómo cambio mi contraseña?</span>
+              <span className="text-[#a68a64] group-open:rotate-180 transition-transform text-lg">▼</span>
             </summary>
             <p className="mt-3 text-sm text-[#a68a64] pl-4 border-l-2 border-[#e8dcca]">
               Ve a "Mi Perfil" y haz clic en "Cambiar contraseña".
+            </p>
+          </details>
+          <details className="bg-white rounded-xl p-4 border border-[#e8dcca] group">
+            <summary className="cursor-pointer font-medium text-sm text-[#6b4c3a] hover:text-[#4a3222] transition flex items-center justify-between">
+              <span>¿Cómo veo el progreso de un estudiante?</span>
+              <span className="text-[#a68a64] group-open:rotate-180 transition-transform text-lg">▼</span>
+            </summary>
+            <p className="mt-3 text-sm text-[#a68a64] pl-4 border-l-2 border-[#e8dcca]">
+              Ve a la sección "Estudiantes" para ver el listado completo con puntuaciones, grado y municipio. Las Estadísticas muestran gráficas globales de progreso.
             </p>
           </details>
         </div>
@@ -108,39 +120,45 @@ export function AyudaPadrino() {
   const seccionActual = secciones[seccionActiva] || secciones.inicio
 
   return (
-    <div className="min-h-screen bg-[#f5efe6]">
-      <div className="p-6 max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-[#4a3222] flex items-center gap-2">
-            ❓ Centro de Ayuda
-          </h1>
-          <p className="text-[#a68a64] mt-1">Guía rápida para padrinos</p>
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-[#4a3222] flex items-center gap-2">
+          ❓ Centro de Ayuda
+        </h1>
+        <p className="text-[#a68a64] mt-1">Guía rápida para padrinos</p>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-md overflow-hidden border border-[#e8dcca]">
+        <div className="flex overflow-x-auto border-b border-[#e8dcca]">
+          {seccionesLista.map(sec => (
+            <button
+              key={sec.id}
+              onClick={() => setSeccionActiva(sec.id)}
+              className={`px-4 py-3 flex items-center gap-2 whitespace-nowrap transition-all text-sm font-medium ${
+                seccionActiva === sec.id
+                  ? 'bg-[#6b4c3a] text-white shadow-inner'
+                  : 'text-[#6b4c3a] hover:bg-[#f5efe6]'
+              }`}
+            >
+              <span className="text-base">{sec.icono}</span>
+              <span>{sec.label}</span>
+            </button>
+          ))}
         </div>
 
-        <div className="bg-white rounded-xl shadow-md overflow-hidden border border-[#e8dcca]">
-          <div className="flex overflow-x-auto border-b">
-            {seccionesLista.map(sec => (
-              <button
-                key={sec.id}
-                onClick={() => setSeccionActiva(sec.id)}
-                className={`px-4 py-3 flex items-center gap-2 whitespace-nowrap transition ${
-                  seccionActiva === sec.id ? 'bg-[#6b4c3a] text-white' : 'text-[#6b4c3a] hover:bg-[#f5efe6]'
-                }`}
-              >
-                <span>{sec.icono}</span>
-                <span>{sec.label}</span>
-              </button>
-            ))}
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#e8dcca]">
+            <span className="text-2xl">{seccionActual.icono}</span>
+            <h2 className="text-xl font-semibold text-[#4a3222]">{seccionActual.titulo}</h2>
           </div>
-
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[#e8dcca]">
-              <span className="text-2xl">{seccionActual.icono}</span>
-              <h2 className="text-xl font-semibold text-[#4a3222]">{seccionActual.titulo}</h2>
-            </div>
-            {seccionActual.contenido}
-          </div>
+          {seccionActual.contenido}
         </div>
+      </div>
+
+      <div className="mt-6 bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] rounded-xl shadow-md p-4 text-white text-center">
+        <p className="text-sm opacity-90">
+          ¿Necesitas ayuda adicional? Contacta al administrador del programa.
+        </p>
       </div>
     </div>
   )

@@ -6,6 +6,8 @@ import { supabase } from '../../lib/supabase'
 export function Registro() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [loadingInstituciones, setLoadingInstituciones] = useState(false)
+  const [loadingSedes, setLoadingSedes] = useState(false)
   const [mostrarPassword, setMostrarPassword] = useState(false)
   const [municipios, setMunicipios] = useState([])
   const [instituciones, setInstituciones] = useState([])
@@ -42,13 +44,16 @@ export function Registro() {
       setInstituciones([])
       return
     }
+    setLoadingInstituciones(true)
+    setFormData(prev => ({ ...prev, institucion_id: '', sede_id: '' }))
+    setSedes([])
     const { data } = await supabase
       .from('instituciones')
       .select('id, nombre')
       .eq('municipio_id', municipioId)
       .order('nombre')
     if (data) setInstituciones(data)
-    setFormData(prev => ({ ...prev, institucion_id: '', sede_id: '' }))
+    setLoadingInstituciones(false)
   }
 
   async function cargarSedes(institucionId) {
@@ -56,13 +61,15 @@ export function Registro() {
       setSedes([])
       return
     }
+    setLoadingSedes(true)
+    setFormData(prev => ({ ...prev, sede_id: '' }))
     const { data } = await supabase
       .from('sedes')
       .select('id, nombre')
       .eq('institucion_id', institucionId)
       .order('nombre')
     if (data) setSedes(data)
-    setFormData(prev => ({ ...prev, sede_id: '' }))
+    setLoadingSedes(false)
   }
 
   function handleChange(e) {
@@ -141,199 +148,243 @@ export function Registro() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f5efe6] via-[#e8dcca] to-[#d4c4a8] py-6 sm:py-8 px-4 relative overflow-hidden">
-      {/* Elementos decorativos flotantes - responsive */}
-      <div className="absolute top-20 left-10 text-5xl sm:text-6xl opacity-5 animate-bounce pointer-events-none hidden sm:block">🌱</div>
-      <div className="absolute bottom-20 right-10 text-5xl sm:text-6xl opacity-5 animate-pulse pointer-events-none hidden md:block">🍃</div>
-      <div className="absolute top-1/3 right-1/4 text-4xl sm:text-5xl opacity-5 animate-spin-slow pointer-events-none hidden lg:block">☕</div>
+    <div className="min-h-screen bg-[#f5efe6] py-6 sm:py-10 px-4 relative overflow-hidden">
+      {/* Decoración sutil */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-[#e8dcca] rounded-full translate-x-1/2 -translate-y-1/2 opacity-40 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-72 h-72 bg-[#d4c4a8] rounded-full -translate-x-1/3 translate-y-1/3 opacity-30 pointer-events-none" />
+      <div className="absolute top-1/3 left-1/4 text-[100px] opacity-[0.04] select-none pointer-events-none leading-none">🌱</div>
 
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-500">
-          {/* Header - responsive */}
-          <div className="bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] p-4 sm:p-6 text-center">
-            <div className="text-3xl sm:text-4xl mb-2 animate-bounce">📝</div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white">Registro de Estudiante</h1>
-            <p className="text-[#d4c4a8] text-xs sm:text-sm mt-1">Completa tu aventura cafetera</p>
+      <div className="max-w-2xl mx-auto relative z-10">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-[#2c1810] via-[#4a3222] to-[#7a5c48] p-6 text-center relative overflow-hidden">
+            <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white/5" />
+            <div className="absolute bottom-0 right-0 text-[80px] opacity-[0.05] leading-none select-none">☕</div>
+            <div className="relative">
+              <div className="w-12 h-12 mx-auto rounded-full bg-white/15 flex items-center justify-center text-2xl mb-3 border border-white/20">📝</div>
+              <h1 className="text-xl font-bold text-white">Registro de Estudiante</h1>
+              <p className="text-[#d4c4a8] text-xs mt-1">Crea tu cuenta para empezar</p>
+            </div>
           </div>
-          
-          <div className="p-4 sm:p-6 max-h-[70vh] overflow-y-auto">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Nombre completo *</label>
-                  <input
-                    type="text"
-                    name="nombre_completo"
-                    value={formData.nombre_completo}
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
-                    required
-                  />
+
+          <div className="p-4 sm:p-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
+
+              {/* Sección: Información Personal */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm">👤</span>
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#a68a64]">Información Personal</h3>
+                  <div className="flex-1 h-px bg-[#e8dcca]" />
                 </div>
-                
-                <div>
-                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Correo electrónico *</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Contraseña *</label>
-                  <div className="relative">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="col-span-1 sm:col-span-2">
+                    <label className="block text-[#4a3222] font-medium mb-1 text-sm">Nombre completo *</label>
                     <input
-                      type={mostrarPassword ? "text" : "password"}
-                      name="password"
-                      value={formData.password}
+                      type="text"
+                      name="nombre_completo"
+                      value={formData.nombre_completo}
                       onChange={handleChange}
-                      className="w-full px-3 sm:px-4 py-2 pr-10 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                      className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                      placeholder="Escribe tu nombre completo"
                       required
                     />
-                    <button
-                      type="button"
-                      onClick={() => setMostrarPassword(!mostrarPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#a68a64] hover:text-[#6b4c3a] transition"
-                    >
-                      {mostrarPassword ? '🙈' : '👁️'}
-                    </button>
                   </div>
-                  <p className="text-xs text-[#a68a64] mt-1">Mínimo 6 caracteres</p>
-                </div>
-                
-                <div>
-                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Tipo documento</label>
-                  <select
-                    name="tipo_documento"
-                    value={formData.tipo_documento}
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
-                  >
-                    <option value="CC">Cédula de ciudadanía</option>
-                    <option value="TI">Tarjeta de identidad</option>
-                    <option value="CE">Cédula de extranjería</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Número documento *</label>
-                  <input
-                    type="text"
-                    name="numero_documento"
-                    value={formData.numero_documento}
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
-                    required
-                  />
-                </div>
-                
-                {/* Ubicación */}
-                <div>
-                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Municipio *</label>
-                  <select
-                    name="municipio_id"
-                    value={formData.municipio_id}
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
-                    required
-                  >
-                    <option value="">Seleccionar municipio</option>
-                    {municipios.map(m => (
-                      <option key={m.id} value={m.id}>{m.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Institución *</label>
-                  <select
-                    name="institucion_id"
-                    value={formData.institucion_id}
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
-                    required
-                    disabled={!formData.municipio_id}
-                  >
-                    <option value="">Seleccionar institución</option>
-                    {instituciones.map(i => (
-                      <option key={i.id} value={i.id}>{i.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Sede *</label>
-                  <select
-                    name="sede_id"
-                    value={formData.sede_id}
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
-                    required
-                    disabled={!formData.institucion_id}
-                  >
-                    <option value="">Seleccionar sede</option>
-                    {sedes.map(s => (
-                      <option key={s.id} value={s.id}>{s.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Grado *</label>
-                  <select
-                    name="grado"
-                    value={formData.grado}
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
-                  >
-                    {[4,5,6,7,8,9,10,11].map(g => (
-                      <option key={g} value={g}>{g}°</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-[#4a3222] font-medium mb-1 text-sm sm:text-base">Edad *</label>
-                  <input
-                    type="number"
-                    name="edad"
-                    value={formData.edad}
-                    onChange={handleChange}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
-                    placeholder="4 - 18 años"
-                    required
-                  />
-                </div>
-                
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-[#4a3222] font-medium mb-2 text-sm sm:text-base">Tipo de proyecto *</label>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <label className="flex items-center gap-2 p-3 border border-[#e8dcca] rounded-xl cursor-pointer hover:bg-[#f5efe6] transition flex-1">
+                  <div>
+                    <label className="block text-[#4a3222] font-medium mb-1 text-sm">Correo electrónico *</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                      placeholder="correo@ejemplo.com"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#4a3222] font-medium mb-1 text-sm">Contraseña *</label>
+                    <div className="relative">
                       <input
-                        type="radio"
-                        name="tipo_proyecto"
-                        value="cafe"
-                        checked={formData.tipo_proyecto === 'cafe'}
+                        type={mostrarPassword ? "text" : "password"}
+                        name="password"
+                        value={formData.password}
                         onChange={handleChange}
-                        className="w-4 h-4 text-[#6b4c3a]"
+                        className={`w-full px-3 py-2 pr-10 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition ${
+                          formData.password && formData.password.length < 6 ? 'border-red-300' : 'border-[#e8dcca]'
+                        }`}
+                        placeholder="Mínimo 6 caracteres"
+                        required
                       />
-                      <span className="text-[#4a3222] text-sm sm:text-base">☕ Escuela y Café</span>
+                      <button
+                        type="button"
+                        onClick={() => setMostrarPassword(!mostrarPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#a68a64] hover:text-[#6b4c3a] transition"
+                      >
+                        {mostrarPassword ? '🙈' : '👁️'}
+                      </button>
+                    </div>
+                    {formData.password && formData.password.length < 6 && (
+                      <p className="text-xs text-red-500 mt-1">Mínimo 6 caracteres</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-[#4a3222] font-medium mb-1 text-sm">Tipo documento</label>
+                    <select
+                      name="tipo_documento"
+                      value={formData.tipo_documento}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    >
+                      <option value="CC">Cédula de ciudadanía</option>
+                      <option value="TI">Tarjeta de identidad</option>
+                      <option value="CE">Cédula de extranjería</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#4a3222] font-medium mb-1 text-sm">Número documento *</label>
+                    <input
+                      type="text"
+                      name="numero_documento"
+                      value={formData.numero_documento}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                      placeholder="Número de documento"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección: Ubicación */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm">📍</span>
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#a68a64]">Ubicación</h3>
+                  <div className="flex-1 h-px bg-[#e8dcca]" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[#4a3222] font-medium mb-1 text-sm">Municipio *</label>
+                    <select
+                      name="municipio_id"
+                      value={formData.municipio_id}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                      required
+                    >
+                      <option value="">Seleccionar...</option>
+                      {municipios.map(m => (
+                        <option key={m.id} value={m.id}>{m.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#4a3222] font-medium mb-1 text-sm flex items-center gap-1">
+                      Institución *
+                      {loadingInstituciones && <span className="animate-spin text-xs">⏳</span>}
                     </label>
-                    <label className="flex items-center gap-2 p-3 border border-[#e8dcca] rounded-xl cursor-pointer hover:bg-[#f5efe6] transition flex-1">
-                      <input
-                        type="radio"
-                        name="tipo_proyecto"
-                        value="alimentacion"
-                        checked={formData.tipo_proyecto === 'alimentacion'}
-                        onChange={handleChange}
-                        className="w-4 h-4 text-[#6b4c3a]"
-                      />
-                      <span className="text-[#4a3222] text-sm sm:text-base">🌽 Seguridad Alimentaria</span>
+                    <select
+                      name="institucion_id"
+                      value={formData.institucion_id}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition disabled:opacity-60"
+                      required
+                      disabled={!formData.municipio_id || loadingInstituciones}
+                    >
+                      <option value="">
+                        {loadingInstituciones ? 'Cargando...' : !formData.municipio_id ? 'Primero el municipio' : 'Seleccionar...'}
+                      </option>
+                      {instituciones.map(i => (
+                        <option key={i.id} value={i.id}>{i.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#4a3222] font-medium mb-1 text-sm flex items-center gap-1">
+                      Sede *
+                      {loadingSedes && <span className="animate-spin text-xs">⏳</span>}
                     </label>
+                    <select
+                      name="sede_id"
+                      value={formData.sede_id}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition disabled:opacity-60"
+                      required
+                      disabled={!formData.institucion_id || loadingSedes}
+                    >
+                      <option value="">
+                        {loadingSedes ? 'Cargando...' : !formData.institucion_id ? 'Primero la institución' : 'Seleccionar...'}
+                      </option>
+                      {sedes.map(s => (
+                        <option key={s.id} value={s.id}>{s.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección: Datos Académicos */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm">📚</span>
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#a68a64]">Datos Académicos</h3>
+                  <div className="flex-1 h-px bg-[#e8dcca]" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[#4a3222] font-medium mb-1 text-sm">Grado *</label>
+                    <select
+                      name="grado"
+                      value={formData.grado}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                    >
+                      {[4,5,6,7,8,9,10,11].map(g => (
+                        <option key={g} value={g}>{g}°</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#4a3222] font-medium mb-1 text-sm">Edad *</label>
+                    <input
+                      type="number"
+                      name="edad"
+                      value={formData.edad}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
+                      placeholder="Entre 4 y 18 años"
+                      min={4}
+                      max={18}
+                      required
+                    />
+                  </div>
+                  <div className="col-span-1 sm:col-span-2">
+                    <label className="block text-[#4a3222] font-medium mb-2 text-sm">Tipo de proyecto *</label>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <label className={`flex items-center gap-2 p-3 border-2 rounded-xl cursor-pointer transition flex-1 ${formData.tipo_proyecto === 'cafe' ? 'border-[#6b4c3a] bg-[#f5efe6]' : 'border-[#e8dcca] hover:border-[#a68a64]'}`}>
+                        <input
+                          type="radio"
+                          name="tipo_proyecto"
+                          value="cafe"
+                          checked={formData.tipo_proyecto === 'cafe'}
+                          onChange={handleChange}
+                          className="w-4 h-4 text-[#6b4c3a]"
+                        />
+                        <span className="text-[#4a3222] text-sm font-medium">☕ Escuela y Café</span>
+                      </label>
+                      <label className={`flex items-center gap-2 p-3 border-2 rounded-xl cursor-pointer transition flex-1 ${formData.tipo_proyecto === 'alimentacion' ? 'border-[#6b4c3a] bg-[#f5efe6]' : 'border-[#e8dcca] hover:border-[#a68a64]'}`}>
+                        <input
+                          type="radio"
+                          name="tipo_proyecto"
+                          value="alimentacion"
+                          checked={formData.tipo_proyecto === 'alimentacion'}
+                          onChange={handleChange}
+                          className="w-4 h-4 text-[#6b4c3a]"
+                        />
+                        <span className="text-[#4a3222] text-sm font-medium">🌽 Seguridad Alimentaria</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -341,21 +392,21 @@ export function Registro() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-2 sm:py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 mt-4 text-sm sm:text-base"
+                className="w-full bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-2.5 rounded-xl font-semibold hover:shadow-lg transition-all duration-200 disabled:opacity-50 mt-2 text-sm"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="animate-spin">⏳</span>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Registrando...
                   </span>
                 ) : (
-                  '🌱 Registrarse'
+                  'Crear cuenta'
                 )}
               </button>
             </form>
             
-            <div className="mt-4 sm:mt-6 text-center">
-              <p className="text-[#a68a64] text-xs sm:text-sm">
+            <div className="mt-5 text-center">
+              <p className="text-[#a68a64] text-xs">
                 ¿Ya tienes cuenta?{' '}
                 <button
                   onClick={() => navigate('/login')}
@@ -368,16 +419,6 @@ export function Registro() {
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 20s linear infinite;
-        }
-      `}</style>
     </div>
   )
 }

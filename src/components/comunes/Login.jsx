@@ -14,100 +14,104 @@ export function Login() {
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
-    
     const { error } = await login(email, password)
-    
     if (error) {
       toast.error('Correo o contraseña incorrectos')
     } else {
       toast.success('¡Bienvenido!')
       navigate('/')
     }
-    
     setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f5efe6] via-[#e8dcca] to-[#d4c4a8] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Elementos decorativos flotantes - responsive: se ocultan en móvil muy pequeño */}
-      <div className="absolute top-20 left-10 text-8xl opacity-5 animate-bounce pointer-events-none hidden sm:block">🌱</div>
-      <div className="absolute bottom-20 right-10 text-8xl opacity-5 animate-pulse pointer-events-none hidden md:block">☕</div>
-      <div className="absolute top-1/2 left-1/4 text-6xl opacity-5 animate-spin-slow pointer-events-none hidden lg:block">🌿</div>
-      <div className="absolute bottom-1/3 right-1/3 text-7xl opacity-5 animate-float pointer-events-none hidden xl:block">🍃</div>
+    <div className="min-h-screen bg-[#f5efe6] flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Decoración sutil de fondo */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-[#e8dcca] rounded-full -translate-x-1/2 -translate-y-1/2 opacity-40 pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-80 h-80 bg-[#d4c4a8] rounded-full translate-x-1/3 translate-y-1/3 opacity-30 pointer-events-none" />
+      <div className="absolute top-1/4 right-1/4 text-[120px] opacity-[0.04] select-none pointer-events-none leading-none">☕</div>
 
-      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-md w-full transform transition-all duration-500 hover:scale-105 mx-4">
-        {/* Header - responsive padding */}
-        <div className="bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] p-4 sm:p-6 text-center">
-          <div className="text-4xl sm:text-5xl mb-2 animate-bounce">☕</div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">PPP Tools</h1>
-          <p className="text-[#d4c4a8] text-xs sm:text-sm mt-1">Proyectos Pedagógicos Productivos</p>
-          <p className="text-[#d4c4a8] text-xs mt-2 hidden sm:block">Comité de Cafeteros de Caldas</p>
-        </div>
-        
-        <div className="p-4 sm:p-6 md:p-8">
-          <div className="text-center mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-semibold text-[#4a3222]">Bienvenido</h2>
-            <p className="text-[#a68a64] text-xs sm:text-sm mt-1">Inicia sesión para continuar tu aventura</p>
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden w-full max-w-md mx-4 relative z-10">
+        {/* Header */}
+        <div className="bg-gradient-to-br from-[#2c1810] via-[#4a3222] to-[#7a5c48] p-6 text-center relative overflow-hidden">
+          <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/5" />
+          <div className="absolute bottom-0 left-0 text-[80px] opacity-[0.05] leading-none select-none">☕</div>
+          <div className="relative">
+            <div className="w-14 h-14 mx-auto rounded-full bg-white/15 flex items-center justify-center text-3xl mb-3 border border-white/20">
+              ☕
+            </div>
+            <h1 className="text-2xl font-bold text-white tracking-wide">PPP Tools</h1>
+            <p className="text-[#d4c4a8] text-xs mt-1">Proyectos Pedagógicos Productivos</p>
+            <p className="text-white/40 text-[10px] mt-1 uppercase tracking-widest">Comité de Cafeteros de Caldas</p>
           </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-            <div className="relative group">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#a68a64] group-focus-within:text-[#6b4c3a] transition-colors">
-                📧
+        </div>
+
+        <div className="p-6 sm:p-8">
+          <div className="text-center mb-6">
+            <h2 className="text-lg font-bold text-[#4a3222]">Bienvenido de nuevo</h2>
+            <p className="text-[#a68a64] text-xs mt-1">Inicia sesión para continuar</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1.5">
+                Correo electrónico
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a68a64] text-sm">📧</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 text-sm border border-[#e8dcca] rounded-xl bg-[#faf7f3] text-[#4a3222] placeholder:text-[#c4a882] focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] focus:border-transparent transition"
+                  placeholder="tu@correo.com"
+                  required
+                />
               </div>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 sm:py-3 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] focus:border-transparent transition-all duration-200 bg-[#faf8f5]"
-                placeholder="Correo electrónico"
-                required
-              />
             </div>
-            
-            <div className="relative group">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#a68a64] group-focus-within:text-[#6b4c3a] transition-colors">
-                🔒
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1.5">
+                Contraseña
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a68a64] text-sm">🔒</span>
+                <input
+                  type={mostrarPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-9 pr-10 py-2.5 text-sm border border-[#e8dcca] rounded-xl bg-[#faf7f3] text-[#4a3222] placeholder:text-[#c4a882] focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] focus:border-transparent transition"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarPassword(!mostrarPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a68a64] hover:text-[#6b4c3a] transition text-sm"
+                >
+                  {mostrarPassword ? '🙈' : '👁️'}
+                </button>
               </div>
-              <input
-                type={mostrarPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-12 py-2 sm:py-3 text-sm sm:text-base border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] focus:border-transparent transition-all duration-200 bg-[#faf8f5]"
-                placeholder="Contraseña"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarPassword(!mostrarPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#a68a64] hover:text-[#6b4c3a] transition-colors"
-              >
-                {mostrarPassword ? (
-                  <span className="text-lg sm:text-xl">🙈</span>
-                ) : (
-                  <span className="text-lg sm:text-xl">👁️</span>
-                )}
-              </button>
             </div>
-            
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-2 sm:py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 text-sm sm:text-base"
+              className="w-full bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-2.5 rounded-xl font-semibold hover:shadow-lg transition-all duration-200 disabled:opacity-50 text-sm mt-2"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="animate-spin">⏳</span>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Ingresando...
                 </span>
               ) : (
-                '🚀 Iniciar sesión'
+                'Iniciar sesión'
               )}
             </button>
           </form>
-          
-          <div className="mt-4 sm:mt-6 text-center">
-            <p className="text-[#a68a64] text-xs sm:text-sm">
+
+          <div className="mt-5 text-center">
+            <p className="text-[#a68a64] text-xs">
               ¿No tienes cuenta?{' '}
               <button
                 onClick={() => navigate('/registro')}
@@ -118,30 +122,13 @@ export function Login() {
             </p>
           </div>
 
-          <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-[#e8dcca] text-center">
-            <p className="text-xs text-[#a68a64]">
-              🌱 Aprende sobre café y seguridad alimentaria 🌽
+          <div className="mt-5 pt-5 border-t border-[#f5efe6] text-center">
+            <p className="text-[10px] text-[#c4a882] uppercase tracking-widest">
+              Escuela y Café · Seguridad Alimentaria
             </p>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 20s linear infinite;
-        }
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   )
 }

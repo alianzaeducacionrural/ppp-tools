@@ -86,20 +86,8 @@ export function EstudiantesPadrino() {
     setFiltros({ grado: '', tipo_proyecto: '', municipio_id: '', institucion_id: '' })
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f5efe6] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl animate-pulse mb-2">👨‍🎓</div>
-          <p className="text-[#a68a64]">Cargando estudiantes...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-[#f5efe6]">
-      <div className="p-6">
+    <div className="p-6">
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-bold text-[#4a3222] flex items-center gap-2">
             👨‍🎓 Estudiantes
@@ -180,7 +168,12 @@ export function EstudiantesPadrino() {
         </div>
 
         {/* Lista de estudiantes */}
-        {estudiantes.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-12 text-[#a68a64]">
+            <div className="text-4xl animate-pulse mb-2">👨‍🎓</div>
+            <p>Cargando estudiantes...</p>
+          </div>
+        ) : estudiantes.length === 0 ? (
           <div className="bg-white rounded-xl shadow-md p-12 text-center border border-[#e8dcca]">
             <span className="text-6xl mb-4 block">📭</span>
             <p className="text-[#a68a64] text-lg">No hay estudiantes que coincidan con los filtros</p>
@@ -233,7 +226,6 @@ export function EstudiantesPadrino() {
             })}
           </div>
         )}
-      </div>
     </div>
   )
 }
