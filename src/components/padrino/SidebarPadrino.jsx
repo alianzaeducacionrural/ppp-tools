@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 const MENU_ITEMS = [
   { id: 'dashboard',    label: 'Dashboard',    icono: '📊', path: '/padrino',              descripcion: 'Evidencias pendientes' },
   { id: 'estadisticas', label: 'Estadísticas', icono: '📈', path: '/padrino/estadisticas', descripcion: 'Gráficos y reportes' },
+  { id: 'ranking',      label: 'Ranking',      icono: '🏆', path: '/padrino/ranking',      descripcion: 'Clasificación de participantes' },
   { id: 'estudiantes',  label: 'Estudiantes',  icono: '👨‍🎓', path: '/padrino/estudiantes',  descripcion: 'Ver todos los estudiantes' },
   { id: 'perfil',       label: 'Mi Perfil',    icono: '👤', path: '/padrino/perfil',        descripcion: 'Gestiona tu cuenta' },
   { id: 'ayuda',        label: 'Ayuda',        icono: '❓', path: '/padrino/ayuda',         descripcion: 'Guía y soporte' },

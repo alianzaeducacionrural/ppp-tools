@@ -1,16 +1,45 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 
+const SELECT_CLS = 'w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] bg-white disabled:opacity-50 disabled:cursor-not-allowed'
+
 export function ReportesExport() {
   const [loading, setLoading] = useState(false)
+  const [municipios, setMunicipios] = useState([])
+  const [instituciones, setInstituciones] = useState([])
+  const [loadingInstituciones, setLoadingInstituciones] = useState(false)
   const [filtros, setFiltros] = useState({
-    municipio: '',
-    institucion: '',
+    municipio_id: '',
+    institucion_id: '',
     grado: '',
     tipo_proyecto: ''
   })
+
+  useEffect(() => {
+    supabase
+      .from('municipios')
+      .select('id, nombre')
+      .order('nombre')
+      .then(({ data }) => setMunicipios(data || []))
+  }, [])
+
+  async function handleMunicipioChange(municipioId) {
+    setFiltros(prev => ({ ...prev, municipio_id: municipioId, institucion_id: '' }))
+    setInstituciones([])
+
+    if (!municipioId) return
+
+    setLoadingInstituciones(true)
+    const { data } = await supabase
+      .from('instituciones')
+      .select('id, nombre')
+      .eq('municipio_id', municipioId)
+      .order('nombre')
+    setInstituciones(data || [])
+    setLoadingInstituciones(false)
+  }
 
   async function exportarExcel() {
     setLoading(true)
@@ -33,6 +62,8 @@ export function ReportesExport() {
         )
       `)
 
+    if (filtros.municipio_id) query = query.eq('municipio_id', filtros.municipio_id)
+    if (filtros.institucion_id) query = query.eq('institucion_id', filtros.institucion_id)
     if (filtros.grado) query = query.eq('grado', filtros.grado)
     if (filtros.tipo_proyecto) query = query.eq('tipo_proyecto', filtros.tipo_proyecto)
 
@@ -44,21 +75,8 @@ export function ReportesExport() {
       return
     }
 
-    let resultado = estudiantes || []
-
-    if (filtros.municipio) {
-      resultado = resultado.filter(e =>
-        e.municipios?.nombre?.toLowerCase().includes(filtros.municipio.toLowerCase())
-      )
-    }
-    if (filtros.institucion) {
-      resultado = resultado.filter(e =>
-        e.instituciones?.nombre?.toLowerCase().includes(filtros.institucion.toLowerCase())
-      )
-    }
-
     const datosExcel = []
-    resultado.forEach(est => {
+    ;(estudiantes || []).forEach(est => {
       est.evidencias?.forEach(ev => {
         datosExcel.push({
           'Nombre': est.nombre_completo,
@@ -108,30 +126,45 @@ export function ReportesExport() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
             <label className="block text-[#6b4c3a] mb-1 font-medium">Municipio</label>
-            <input
-              type="text"
-              value={filtros.municipio}
-              onChange={(e) => setFiltros({ ...filtros, municipio: e.target.value })}
-              className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] placeholder-[#a68a64]"
-              placeholder="Todos"
-            />
+            <select
+              value={filtros.municipio_id}
+              onChange={(e) => handleMunicipioChange(e.target.value)}
+              className={SELECT_CLS}
+            >
+              <option value="">Todos los municipios</option>
+              {municipios.map(m => (
+                <option key={m.id} value={m.id}>{m.nombre}</option>
+              ))}
+            </select>
           </div>
+
           <div>
             <label className="block text-[#6b4c3a] mb-1 font-medium">Institución</label>
-            <input
-              type="text"
-              value={filtros.institucion}
-              onChange={(e) => setFiltros({ ...filtros, institucion: e.target.value })}
-              className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] placeholder-[#a68a64]"
-              placeholder="Todos"
-            />
+            <select
+              value={filtros.institucion_id}
+              onChange={(e) => setFiltros(prev => ({ ...prev, institucion_id: e.target.value }))}
+              disabled={!filtros.municipio_id || loadingInstituciones}
+              className={SELECT_CLS}
+            >
+              <option value="">
+                {loadingInstituciones
+                  ? 'Cargando...'
+                  : !filtros.municipio_id
+                    ? 'Selecciona un municipio primero'
+                    : 'Todas las instituciones'}
+              </option>
+              {instituciones.map(i => (
+                <option key={i.id} value={i.id}>{i.nombre}</option>
+              ))}
+            </select>
           </div>
+
           <div>
             <label className="block text-[#6b4c3a] mb-1 font-medium">Grado</label>
             <select
               value={filtros.grado}
-              onChange={(e) => setFiltros({ ...filtros, grado: e.target.value })}
-              className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222]"
+              onChange={(e) => setFiltros(prev => ({ ...prev, grado: e.target.value }))}
+              className={SELECT_CLS}
             >
               <option value="">Todos</option>
               {[4,5,6,7,8,9,10,11].map(g => (
@@ -139,12 +172,13 @@ export function ReportesExport() {
               ))}
             </select>
           </div>
+
           <div>
             <label className="block text-[#6b4c3a] mb-1 font-medium">Tipo de Proyecto</label>
             <select
               value={filtros.tipo_proyecto}
-              onChange={(e) => setFiltros({ ...filtros, tipo_proyecto: e.target.value })}
-              className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222]"
+              onChange={(e) => setFiltros(prev => ({ ...prev, tipo_proyecto: e.target.value }))}
+              className={SELECT_CLS}
             >
               <option value="">Todos</option>
               <option value="cafe">☕ Escuela y Café</option>

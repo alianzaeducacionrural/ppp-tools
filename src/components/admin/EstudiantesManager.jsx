@@ -3,20 +3,46 @@ import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { CambiarPasswordModal } from './CambiarPasswordModal'
 
+const SELECT_CLS = 'px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] bg-white disabled:opacity-50 disabled:cursor-not-allowed w-full'
+
+const FILTROS_INICIALES = { municipio_id: '', institucion_id: '', grado: '', tipo_proyecto: '' }
+
 export function EstudiantesManager() {
   const [estudiantes, setEstudiantes] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filtros, setFiltros] = useState({
-    municipio: '',
-    institucion: '',
-    grado: '',
-    tipo_proyecto: ''
-  })
+  const [municipios, setMunicipios] = useState([])
+  const [instituciones, setInstituciones] = useState([])
+  const [loadingInstituciones, setLoadingInstituciones] = useState(false)
+  const [filtros, setFiltros] = useState(FILTROS_INICIALES)
   const [passwordModal, setPasswordModal] = useState({ open: false, usuario: null })
+
+  useEffect(() => {
+    supabase
+      .from('municipios')
+      .select('id, nombre')
+      .order('nombre')
+      .then(({ data }) => setMunicipios(data || []))
+  }, [])
 
   useEffect(() => {
     cargarEstudiantes()
   }, [filtros])
+
+  async function handleMunicipioChange(municipioId) {
+    setFiltros(prev => ({ ...prev, municipio_id: municipioId, institucion_id: '' }))
+    setInstituciones([])
+
+    if (!municipioId) return
+
+    setLoadingInstituciones(true)
+    const { data } = await supabase
+      .from('instituciones')
+      .select('id, nombre')
+      .eq('municipio_id', municipioId)
+      .order('nombre')
+    setInstituciones(data || [])
+    setLoadingInstituciones(false)
+  }
 
   async function cargarEstudiantes() {
     setLoading(true)
@@ -26,12 +52,10 @@ export function EstudiantesManager() {
       .select('*, municipios(nombre), instituciones(nombre)')
       .order('created_at', { ascending: false })
 
-    if (filtros.grado) {
-      query = query.eq('grado', filtros.grado)
-    }
-    if (filtros.tipo_proyecto) {
-      query = query.eq('tipo_proyecto', filtros.tipo_proyecto)
-    }
+    if (filtros.municipio_id)   query = query.eq('municipio_id', filtros.municipio_id)
+    if (filtros.institucion_id) query = query.eq('institucion_id', filtros.institucion_id)
+    if (filtros.grado)          query = query.eq('grado', filtros.grado)
+    if (filtros.tipo_proyecto)  query = query.eq('tipo_proyecto', filtros.tipo_proyecto)
 
     const { data, error } = await query
 
@@ -41,21 +65,13 @@ export function EstudiantesManager() {
       return
     }
 
-    let resultado = data || []
-
-    if (filtros.municipio) {
-      resultado = resultado.filter(e =>
-        e.municipios?.nombre?.toLowerCase().includes(filtros.municipio.toLowerCase())
-      )
-    }
-    if (filtros.institucion) {
-      resultado = resultado.filter(e =>
-        e.instituciones?.nombre?.toLowerCase().includes(filtros.institucion.toLowerCase())
-      )
-    }
-
-    setEstudiantes(resultado)
+    setEstudiantes(data || [])
     setLoading(false)
+  }
+
+  function limpiarFiltros() {
+    setInstituciones([])
+    setFiltros(FILTROS_INICIALES)
   }
 
   async function handleDelete(id) {
@@ -70,7 +86,7 @@ export function EstudiantesManager() {
     }
   }
 
-  const hayFiltros = filtros.municipio || filtros.institucion || filtros.grado || filtros.tipo_proyecto
+  const hayFiltros = filtros.municipio_id || filtros.institucion_id || filtros.grado || filtros.tipo_proyecto
 
   return (
     <div>
@@ -79,43 +95,60 @@ export function EstudiantesManager() {
       {/* Filtros */}
       <div className="bg-white rounded-xl shadow-md border border-[#e8dcca] p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <input
-            type="text"
-            placeholder="Municipio"
-            value={filtros.municipio}
-            onChange={(e) => setFiltros({ ...filtros, municipio: e.target.value })}
-            className="px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] placeholder-[#a68a64]"
-          />
-          <input
-            type="text"
-            placeholder="Institución"
-            value={filtros.institucion}
-            onChange={(e) => setFiltros({ ...filtros, institucion: e.target.value })}
-            className="px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] placeholder-[#a68a64]"
-          />
+          <select
+            value={filtros.municipio_id}
+            onChange={(e) => handleMunicipioChange(e.target.value)}
+            className={SELECT_CLS}
+          >
+            <option value="">Todos los municipios</option>
+            {municipios.map(m => (
+              <option key={m.id} value={m.id}>{m.nombre}</option>
+            ))}
+          </select>
+
+          <select
+            value={filtros.institucion_id}
+            onChange={(e) => setFiltros(prev => ({ ...prev, institucion_id: e.target.value }))}
+            disabled={!filtros.municipio_id || loadingInstituciones}
+            className={SELECT_CLS}
+          >
+            <option value="">
+              {loadingInstituciones
+                ? 'Cargando...'
+                : !filtros.municipio_id
+                  ? 'Selecciona un municipio'
+                  : 'Todas las instituciones'}
+            </option>
+            {instituciones.map(i => (
+              <option key={i.id} value={i.id}>{i.nombre}</option>
+            ))}
+          </select>
+
           <select
             value={filtros.grado}
-            onChange={(e) => setFiltros({ ...filtros, grado: e.target.value })}
-            className="px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222]"
+            onChange={(e) => setFiltros(prev => ({ ...prev, grado: e.target.value }))}
+            className={SELECT_CLS}
           >
             <option value="">Todos los grados</option>
             {[4,5,6,7,8,9,10,11].map(g => (
               <option key={g} value={g}>{g}°</option>
             ))}
           </select>
+
           <select
             value={filtros.tipo_proyecto}
-            onChange={(e) => setFiltros({ ...filtros, tipo_proyecto: e.target.value })}
-            className="px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222]"
+            onChange={(e) => setFiltros(prev => ({ ...prev, tipo_proyecto: e.target.value }))}
+            className={SELECT_CLS}
           >
             <option value="">Todos los proyectos</option>
             <option value="cafe">☕ Escuela y Café</option>
             <option value="alimentacion">🌽 Seguridad Alimentaria</option>
           </select>
         </div>
+
         {hayFiltros && (
           <button
-            onClick={() => setFiltros({ municipio: '', institucion: '', grado: '', tipo_proyecto: '' })}
+            onClick={limpiarFiltros}
             className="mt-3 text-sm text-red-600 hover:text-red-800 font-medium"
           >
             🧹 Limpiar filtros

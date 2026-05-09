@@ -9,6 +9,7 @@ import { EstadisticasPadrino } from './EstadisticasPadrino'
 import { EstudiantesPadrino } from './EstudiantesPadrino'
 import { PerfilPadrino } from './PerfilPadrino'
 import { AyudaPadrino } from './AyudaPadrino'
+import { RankingParticipantes } from '../comunes/RankingParticipantes'
 
 // ============================================
 // COMPONENTE PRINCIPAL DE EVIDENCIAS (Dashboard)
@@ -564,6 +565,7 @@ export default function DashboardPadrino() {
         <Routes>
           <Route path="/" element={<DashboardEvidencias />} />
           <Route path="/estadisticas" element={<EstadisticasPadrino />} />
+          <Route path="/ranking" element={<RankingParticipantes />} />
           <Route path="/estudiantes" element={<EstudiantesPadrino />} />
           <Route path="/perfil" element={<PerfilPadrino />} />
           <Route path="/ayuda" element={<AyudaPadrino />} />
