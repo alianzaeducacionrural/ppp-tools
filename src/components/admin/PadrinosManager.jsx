@@ -42,21 +42,34 @@ export function PadrinosManager() {
 
     setLoading(true)
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: { data: { full_name: formData.nombre } }
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      toast.error('Sesión expirada, vuelve a iniciar sesión')
+      setLoading(false)
+      return
+    }
+
+    // Create auth user server-side so the admin session is never replaced
+    const response = await fetch('/api/crear-padrino', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ email: formData.email, password: formData.password, nombre: formData.nombre })
     })
 
-    if (authError) {
-      toast.error('Error al crear usuario: ' + authError.message)
+    const result = await response.json()
+
+    if (!response.ok) {
+      toast.error('Error al crear usuario: ' + result.error)
       setLoading(false)
       return
     }
 
     const { error: padrinoError } = await supabase
       .from('padrinos')
-      .insert({ user_id: authData.user.id, email: formData.email, nombre: formData.nombre, activo: true })
+      .insert({ user_id: result.userId, email: formData.email, nombre: formData.nombre, activo: true })
 
     if (padrinoError) {
       toast.error('Error al registrar padrino: ' + padrinoError.message)

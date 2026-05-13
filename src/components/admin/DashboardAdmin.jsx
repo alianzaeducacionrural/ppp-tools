@@ -4,7 +4,6 @@ import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { NivelesManager } from './NivelesManager'
-import { RetosManager } from './RetosManager'
 import { EstudiantesManager } from './EstudiantesManager'
 import { PadrinosManager } from './PadrinosManager'
 import { ReportesExport } from './ReportesExport'
@@ -13,8 +12,7 @@ import { RankingParticipantes } from '../comunes/RankingParticipantes'
 const menuItems = [
   { id: 'dashboard',   label: 'Dashboard',  icono: '📊', descripcion: 'Resumen general' },
   { id: 'ranking',     label: 'Ranking',    icono: '🏆', descripcion: 'Clasificación general' },
-  { id: 'niveles',     label: 'Niveles',    icono: '📚', descripcion: 'Gestionar niveles' },
-  { id: 'retos',       label: 'Retos',      icono: '🎯', descripcion: 'Gestionar retos' },
+  { id: 'niveles',     label: 'Niveles',    icono: '📚', descripcion: 'Gestionar niveles y retos' },
   { id: 'estudiantes', label: 'Estudiantes',icono: '👨‍🎓', descripcion: 'Ver estudiantes' },
   { id: 'padrinos',    label: 'Padrinos',   icono: '👥', descripcion: 'Gestionar padrinos' },
   { id: 'reportes',    label: 'Reportes',   icono: '📄', descripcion: 'Exportar datos' },
@@ -235,8 +233,7 @@ function DashboardAdmin() {
   const tabTitles = {
     dashboard:   { titulo: '📊 Resumen General', sub: 'Estadísticas y actividad reciente de la plataforma' },
     ranking:     { titulo: '🏆 Ranking', sub: 'Clasificación de participantes por puntos acumulados' },
-    niveles:     { titulo: '📚 Niveles', sub: 'Crea y gestiona los niveles del programa' },
-    retos:       { titulo: '🎯 Retos', sub: 'Administra los retos de cada nivel' },
+    niveles:     { titulo: '📚 Niveles', sub: 'Crea y gestiona los niveles y sus retos' },
     estudiantes: { titulo: '👨‍🎓 Estudiantes', sub: 'Listado y gestión de estudiantes registrados' },
     padrinos:    { titulo: '👥 Padrinos', sub: 'Gestiona los padrinos colaboradores' },
     reportes:    { titulo: '📄 Reportes', sub: 'Exporta datos del programa a Excel' },
@@ -269,7 +266,6 @@ function DashboardAdmin() {
             )}
             {activeTab === 'ranking'     && <RankingParticipantes />}
             {activeTab === 'niveles'     && <NivelesManager />}
-            {activeTab === 'retos'       && <RetosManager />}
             {activeTab === 'estudiantes' && <EstudiantesManager />}
             {activeTab === 'padrinos'    && <PadrinosManager />}
             {activeTab === 'reportes'    && <ReportesExport />}

@@ -44,75 +44,81 @@ export function ReportesExport() {
   async function exportarExcel() {
     setLoading(true)
 
-    let query = supabase
-      .from('estudiantes')
-      .select(`
-        *,
-        municipios(nombre),
-        instituciones(nombre),
-        evidencias (
-          id,
-          estado,
-          puntuacion,
-          fecha_envio,
-          reto:reto_id (
-            texto,
-            nivel:nivel_id (nombre, numero_nivel)
-          )
-        )
-      `)
+    try {
+      // Query 1: students with municipio/institucion names
+      let studentQuery = supabase
+        .from('estudiantes')
+        .select('id, nombre_completo, numero_documento, grado, tipo_proyecto, municipios(nombre), instituciones(nombre)')
 
-    if (filtros.municipio_id) query = query.eq('municipio_id', filtros.municipio_id)
-    if (filtros.institucion_id) query = query.eq('institucion_id', filtros.institucion_id)
-    if (filtros.grado) query = query.eq('grado', filtros.grado)
-    if (filtros.tipo_proyecto) query = query.eq('tipo_proyecto', filtros.tipo_proyecto)
+      if (filtros.municipio_id)   studentQuery = studentQuery.eq('municipio_id', filtros.municipio_id)
+      if (filtros.institucion_id) studentQuery = studentQuery.eq('institucion_id', filtros.institucion_id)
+      if (filtros.grado)          studentQuery = studentQuery.eq('grado', filtros.grado)
+      if (filtros.tipo_proyecto)  studentQuery = studentQuery.eq('tipo_proyecto', filtros.tipo_proyecto)
 
-    const { data: estudiantes, error } = await query
+      const { data: estudiantes, error: estError } = await studentQuery
 
-    if (error) {
-      toast.error('Error al generar el reporte')
-      setLoading(false)
-      return
-    }
+      if (estError) throw estError
 
-    const datosExcel = []
-    ;(estudiantes || []).forEach(est => {
-      est.evidencias?.forEach(ev => {
+      if (!estudiantes || estudiantes.length === 0) {
+        toast.error('No hay estudiantes con los filtros seleccionados')
+        setLoading(false)
+        return
+      }
+
+      // Query 2: evidencias for those students, with reto and nivel info
+      const estudianteIds = estudiantes.map(e => e.id)
+      const { data: evidencias, error: evError } = await supabase
+        .from('evidencias')
+        .select('id, estado, puntuacion, fecha_envio, estudiante_id, retos!reto_id(texto, niveles!nivel_id(nombre, numero_nivel))')
+        .in('estudiante_id', estudianteIds)
+
+      if (evError) throw evError
+
+      const estudiantesMap = Object.fromEntries(estudiantes.map(e => [e.id, e]))
+
+      const datosExcel = []
+      ;(evidencias || []).forEach(ev => {
+        const est = estudiantesMap[ev.estudiante_id]
+        if (!est) return
         datosExcel.push({
-          'Nombre': est.nombre_completo,
-          'Documento': est.numero_documento,
-          'Municipio': est.municipios?.nombre || '-',
-          'Institución': est.instituciones?.nombre || '-',
-          'Grado': `${est.grado}°`,
-          'Proyecto': est.tipo_proyecto === 'cafe' ? 'Escuela y Café' : 'Seguridad Alimentaria',
-          'Nivel': ev.reto?.nivel?.nombre || 'N/A',
-          'Número Nivel': ev.reto?.nivel?.numero_nivel || 'N/A',
-          'Reto': ev.reto?.texto || 'N/A',
-          'Estado': ev.estado === 'pendiente' ? 'Pendiente' : ev.estado === 'aprobado' ? 'Aprobado' : 'Rechazado',
-          'Puntuación': ev.puntuacion || 'N/A',
-          'Fecha Envío': new Date(ev.fecha_envio).toLocaleDateString('es-CO')
+          'Nombre':       est.nombre_completo,
+          'Documento':    est.numero_documento,
+          'Municipio':    est.municipios?.nombre || '-',
+          'Institución':  est.instituciones?.nombre || '-',
+          'Grado':        `${est.grado}°`,
+          'Proyecto':     est.tipo_proyecto === 'cafe' ? 'Escuela y Café' : 'Seguridad Alimentaria',
+          'Nivel':        ev.retos?.niveles?.nombre || 'N/A',
+          'Número Nivel': ev.retos?.niveles?.numero_nivel || 'N/A',
+          'Reto':         ev.retos?.texto || 'N/A',
+          'Estado':       ev.estado === 'pendiente' ? 'Pendiente' : ev.estado === 'aprobado' ? 'Aprobado' : 'Rechazado',
+          'Puntuación':   ev.puntuacion ?? 'N/A',
+          'Fecha Envío':  ev.fecha_envio ? new Date(ev.fecha_envio).toLocaleDateString('es-CO') : 'N/A'
         })
       })
-    })
 
-    if (datosExcel.length === 0) {
-      toast.error('No hay datos para exportar con los filtros seleccionados')
-      setLoading(false)
-      return
+      if (datosExcel.length === 0) {
+        toast.error('No hay evidencias para exportar con los filtros seleccionados')
+        setLoading(false)
+        return
+      }
+
+      const ws = XLSX.utils.json_to_sheet(datosExcel)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Reporte PPP Tools')
+
+      ws['!cols'] = [
+        { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 30 },
+        { wch: 8 }, { wch: 20 }, { wch: 20 }, { wch: 12 },
+        { wch: 40 }, { wch: 12 }, { wch: 10 }, { wch: 12 }
+      ]
+
+      XLSX.writeFile(wb, `reporte_ppp_${new Date().toISOString().split('T')[0]}.xlsx`)
+      toast.success('Reporte exportado exitosamente')
+    } catch (err) {
+      console.error('Error exportando reporte:', err)
+      toast.error('Error al generar el reporte')
     }
 
-    const ws = XLSX.utils.json_to_sheet(datosExcel)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Reporte PPP Tools')
-
-    ws['!cols'] = [
-      { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 30 },
-      { wch: 8 }, { wch: 20 }, { wch: 20 }, { wch: 12 },
-      { wch: 40 }, { wch: 12 }, { wch: 10 }, { wch: 12 }
-    ]
-
-    XLSX.writeFile(wb, `reporte_ppp_${new Date().toISOString().split('T')[0]}.xlsx`)
-    toast.success('Reporte exportado exitosamente')
     setLoading(false)
   }
 
