@@ -55,7 +55,7 @@ export function EstudiantesPadrino() {
 
   async function cargarEstudiantes() {
     setLoading(true)
-    
+
     let query = supabase
       .from('estudiantes')
       .select(`
@@ -75,10 +75,30 @@ export function EstudiantesPadrino() {
 
     if (error) {
       console.error('Error cargando estudiantes:', error)
-    } else {
-      setEstudiantes(data || [])
+      setLoading(false)
+      return
     }
-    
+
+    if (!data || data.length === 0) {
+      setEstudiantes([])
+      setLoading(false)
+      return
+    }
+
+    // Calcular puntuacion_total desde evidencias aprobadas
+    const ids = data.map(e => e.id)
+    const { data: evidencias } = await supabase
+      .from('evidencias')
+      .select('estudiante_id, puntuacion')
+      .eq('estado', 'aprobado')
+      .in('estudiante_id', ids)
+
+    const totales = {}
+    ;(evidencias || []).forEach(ev => {
+      totales[ev.estudiante_id] = (totales[ev.estudiante_id] || 0) + (ev.puntuacion || 0)
+    })
+
+    setEstudiantes(data.map(e => ({ ...e, puntuacion_total: totales[e.id] || 0 })))
     setLoading(false)
   }
 

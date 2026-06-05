@@ -338,6 +338,15 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
       toast.error('Error al aprobar la evidencia')
       console.error(error)
     } else {
+      // Recalcular y persistir el total del estudiante
+      const { data: aprobadas } = await supabase
+        .from('evidencias')
+        .select('puntuacion')
+        .eq('estudiante_id', evidencia.estudiante_id)
+        .eq('estado', 'aprobado')
+      const totalPuntos = (aprobadas || []).reduce((s, e) => s + (e.puntuacion || 0), 0)
+      await supabase.from('estudiantes').update({ puntuacion_total: totalPuntos }).eq('id', evidencia.estudiante_id)
+
       toast.success('✅ Evidencia aprobada exitosamente')
       onActualizar()
     }
@@ -371,6 +380,15 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
       toast.error('Error al rechazar la evidencia')
       console.error(error)
     } else {
+      // Recalcular total por si la evidencia estaba previamente aprobada
+      const { data: aprobadas } = await supabase
+        .from('evidencias')
+        .select('puntuacion')
+        .eq('estudiante_id', evidencia.estudiante_id)
+        .eq('estado', 'aprobado')
+      const totalPuntos = (aprobadas || []).reduce((s, e) => s + (e.puntuacion || 0), 0)
+      await supabase.from('estudiantes').update({ puntuacion_total: totalPuntos }).eq('id', evidencia.estudiante_id)
+
       toast.success('❌ Evidencia rechazada')
       onActualizar()
     }

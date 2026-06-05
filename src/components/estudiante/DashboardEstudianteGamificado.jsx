@@ -140,7 +140,6 @@ function DashboardEstudianteGamificado() {
 
       cacheEstudiante.current = estudianteData
       setEstudiante(estudianteData)
-      setPuntuacionTotal(estudianteData.puntuacion_total || 0)
 
       if (!forceRefresh && cacheNiveles.current) {
         setNiveles(cacheNiveles.current)
@@ -158,10 +157,14 @@ function DashboardEstudianteGamificado() {
         setNiveles(cacheNiveles.current)
       }
 
-      const { data: insigniasData } = await supabase
-        .from('insignias_obtenidas')
-        .select('nivel_id')
-        .eq('estudiante_id', estudianteData.id)
+      // Insignias y puntuación en paralelo — puntuación calculada desde evidencias aprobadas
+      const [{ data: insigniasData }, { data: evAprobadas }] = await Promise.all([
+        supabase.from('insignias_obtenidas').select('nivel_id').eq('estudiante_id', estudianteData.id),
+        supabase.from('evidencias').select('puntuacion').eq('estudiante_id', estudianteData.id).eq('estado', 'aprobado')
+      ])
+
+      const totalPuntos = (evAprobadas || []).reduce((s, e) => s + (e.puntuacion || 0), 0)
+      setPuntuacionTotal(totalPuntos)
 
       const nivelesCompletados = new Set(insigniasData?.map(i => i.nivel_id) || [])
 
@@ -503,7 +506,7 @@ function DashboardEstudianteGamificado() {
         onToggle={() => setSidebarOpen(p => !p)}
         onLogout={handleLogout}
         user={user}
-        estudiante={estudiante}
+        estudiante={estudiante ? { ...estudiante, puntuacion_total: puntuacionTotal } : estudiante}
       />
 
       <div className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-72' : 'md:ml-20'}`}>

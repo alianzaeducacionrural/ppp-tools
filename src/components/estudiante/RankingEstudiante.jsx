@@ -20,32 +20,61 @@ export function RankingEstudiante({ estudiante }) {
 
   async function cargarRanking() {
     setLoading(true)
-    const { data, error } = await supabase
+
+    const { data: estudiantesData, error } = await supabase
       .from('estudiantes')
-      .select('id, nombre_completo, puntuacion_total, avatar_id, grado, tipo_proyecto, instituciones(nombre), municipios(nombre)')
+      .select('id, nombre_completo, avatar_id, grado, tipo_proyecto, instituciones(nombre), municipios(nombre)')
       .eq('grado', estudiante.grado)
       .eq('tipo_proyecto', estudiante.tipo_proyecto)
-      .order('puntuacion_total', { ascending: false })
 
     if (error) {
       console.error('Error cargando ranking:', error)
-    } else if (data) {
-      setRanking(data)
-      const pos = data.findIndex(r => r.id === estudiante.id)
-      try {
-        if (pos >= 0 && pos < 3 && localStorage.getItem('confetti-shown') !== String(estudiante.id)) {
-          setShowConfetti(true)
-          localStorage.setItem('confetti-shown', String(estudiante.id))
-          confettiTimerRef.current = setTimeout(() => setShowConfetti(false), 3000)
-        }
-      } catch (e) { /* localStorage blocked */ }
+      setLoading(false)
+      return
     }
+
+    if (!estudiantesData?.length) {
+      setRanking([])
+      setLoading(false)
+      return
+    }
+
+    const ids = estudiantesData.map(e => e.id)
+    const { data: evidencias } = await supabase
+      .from('evidencias')
+      .select('estudiante_id, puntuacion')
+      .eq('estado', 'aprobado')
+      .in('estudiante_id', ids)
+
+    const totales = {}
+    ;(evidencias || []).forEach(ev => {
+      totales[ev.estudiante_id] = (totales[ev.estudiante_id] || 0) + (ev.puntuacion || 0)
+    })
+
+    const clasificacion = estudiantesData
+      .map(e => ({ ...e, puntuacion_total: totales[e.id] || 0 }))
+      .sort((a, b) => b.puntuacion_total - a.puntuacion_total)
+
+    setRanking(clasificacion)
+
+    const pos = clasificacion.findIndex(r => r.id === estudiante.id)
+    try {
+      if (pos >= 0 && pos < 3 && localStorage.getItem('confetti-shown') !== String(estudiante.id)) {
+        setShowConfetti(true)
+        localStorage.setItem('confetti-shown', String(estudiante.id))
+        confettiTimerRef.current = setTimeout(() => setShowConfetti(false), 3000)
+      }
+    } catch (e) { /* localStorage blocked */ }
+
     setLoading(false)
   }
 
   const posicionEstudiante = ranking.findIndex(r => r.id === estudiante?.id)
   const top3 = ranking.slice(0, 3)
   const resto = ranking.slice(3)
+
+  // Puntuación calculada desde evidencias (no el campo del DB que puede estar desactualizado)
+  const puntosEstudiante = ranking[posicionEstudiante]?.puntuacion_total ?? 0
 
   const puntosFaltantes = useMemo(() => {
     if (posicionEstudiante <= 0) return 0
@@ -54,7 +83,6 @@ export function RankingEstudiante({ estudiante }) {
     return arriba ? arriba.puntuacion_total - actual.puntuacion_total : 0
   }, [posicionEstudiante, ranking])
 
-  // Porcentaje real hacia el puesto de arriba
   const porcentajeHaciaArriba = useMemo(() => {
     if (posicionEstudiante <= 0) return 100
     const misPoints = ranking[posicionEstudiante]?.puntuacion_total || 0
@@ -63,7 +91,10 @@ export function RankingEstudiante({ estudiante }) {
     return Math.min(99, Math.round((misPoints / rivalPoints) * 100))
   }, [posicionEstudiante, ranking])
 
-  const rangoEstudiante = obtenerRango(estudiante?.puntuacion_total || 0, estudiante?.tipo_proyecto || 'cafe')
+  const rangoEstudiante = obtenerRango(
+    ranking.length > 0 ? puntosEstudiante : (estudiante?.puntuacion_total || 0),
+    estudiante?.tipo_proyecto || 'cafe'
+  )
 
   if (loading) {
     return (
@@ -136,7 +167,7 @@ export function RankingEstudiante({ estudiante }) {
             </div>
           </div>
           <div className="ml-auto text-right">
-            <p className="text-3xl font-bold">{estudiante?.puntuacion_total || 0}</p>
+            <p className="text-3xl font-bold">{puntosEstudiante}</p>
             <p className="text-[10px] opacity-60">puntos</p>
           </div>
         </div>
