@@ -111,16 +111,18 @@ function DashboardEvidencias({ onRefresh }) {
         archivosMap[a.evidencia_id].push(a)
       })
 
-      // Combinar datos
-      const evidenciasCompletas = evidenciasData.map(ev => ({
-        ...ev,
-        estudiante: estudiantesMap[ev.estudiante_id],
-        reto: retosMap[ev.reto_id] ? {
-          ...retosMap[ev.reto_id],
-          nivel: nivelesMap[retosMap[ev.reto_id].nivel_id]
-        } : null,
-        evidencias_archivos: archivosMap[ev.id] || []
-      }))
+      // Combinar datos y excluir evidencias de estudiantes eliminados
+      const evidenciasCompletas = evidenciasData
+        .map(ev => ({
+          ...ev,
+          estudiante: estudiantesMap[ev.estudiante_id],
+          reto: retosMap[ev.reto_id] ? {
+            ...retosMap[ev.reto_id],
+            nivel: nivelesMap[retosMap[ev.reto_id].nivel_id]
+          } : null,
+          evidencias_archivos: archivosMap[ev.id] || []
+        }))
+        .filter(ev => ev.estudiante != null)
 
       // Aplicar filtros adicionales
       let filtradas = evidenciasCompletas

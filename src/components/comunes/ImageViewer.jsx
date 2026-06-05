@@ -3,6 +3,7 @@ import { useState } from 'react'
 export function ImageViewer({ images, onClose }) {
   const [selectedImage, setSelectedImage] = useState(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [erroredUrls, setErroredUrls] = useState(new Set())
 
   if (!images || images.length === 0) return null
 
@@ -32,15 +33,25 @@ export function ImageViewer({ images, onClose }) {
       <div className="flex gap-2 flex-wrap mt-2">
         {images.map((img, idx) => (
           <div key={idx} className="relative group">
-            <img
-              src={img}
-              alt={`Evidencia ${idx + 1}`}
-              className="w-24 h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition border-2 border-[#e8dcca] hover:border-[#6b4c3a]"
-              onClick={() => openImage(img, idx)}
-            />
-            <span className="absolute bottom-1 right-1 bg-black bg-opacity-60 text-white text-xs rounded px-1">
-              {idx + 1}/{images.length}
-            </span>
+            {erroredUrls.has(img) ? (
+              <div className="w-24 h-24 rounded-lg border-2 border-[#e8dcca] bg-[#f5efe6] flex flex-col items-center justify-center text-[#a68a64] text-xs text-center px-1">
+                <span className="text-lg mb-1">🖼️</span>
+                <span>No disponible</span>
+              </div>
+            ) : (
+              <>
+                <img
+                  src={img}
+                  alt={`Evidencia ${idx + 1}`}
+                  className="w-24 h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition border-2 border-[#e8dcca] hover:border-[#6b4c3a]"
+                  onClick={() => openImage(img, idx)}
+                  onError={() => setErroredUrls(prev => new Set(prev).add(img))}
+                />
+                <span className="absolute bottom-1 right-1 bg-black bg-opacity-60 text-white text-xs rounded px-1">
+                  {idx + 1}/{images.length}
+                </span>
+              </>
+            )}
           </div>
         ))}
       </div>

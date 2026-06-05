@@ -307,7 +307,11 @@ function DashboardStats({ stats, loading, onRefresh }) {
       : { data: [] }
 
     const map = Object.fromEntries((estudiantes || []).map(e => [e.id, e]))
-    setActividadReciente(evidencias.map(ev => ({ ...ev, estudiante: map[ev.estudiante_id] || null })))
+    setActividadReciente(
+      evidencias
+        .map(ev => ({ ...ev, estudiante: map[ev.estudiante_id] || null }))
+        .filter(ev => ev.estudiante != null)
+    )
     setLoadingActividad(false)
   }
 

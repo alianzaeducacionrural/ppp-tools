@@ -65,6 +65,8 @@ function DashboardEstudianteGamificado() {
   const [cargandoRetos, setCargandoRetos] = useState({})
   const [imagenNivelAmpliada, setImagenNivelAmpliada] = useState(null)
   const [initialLoadDone, setInitialLoadDone] = useState(cachedInitialLoadDone)
+  const [retosAprobadosCount, setRetosAprobadosCount] = useState(0)
+  const [totalRetos, setTotalRetos] = useState(0)
 
   const cacheRetos = useRef({})
   const cacheNiveles = useRef(cachedNiveles)
@@ -157,14 +159,20 @@ function DashboardEstudianteGamificado() {
         setNiveles(cacheNiveles.current)
       }
 
-      // Insignias y puntuación en paralelo — puntuación calculada desde evidencias aprobadas
-      const [{ data: insigniasData }, { data: evAprobadas }] = await Promise.all([
+      // Insignias, puntuación y total de retos en paralelo
+      const nivelIdsParaRetos = (cacheNiveles.current || []).map(n => n.id)
+      const [{ data: insigniasData }, { data: evAprobadas }, { count: totalRetosCount }] = await Promise.all([
         supabase.from('insignias_obtenidas').select('nivel_id').eq('estudiante_id', estudianteData.id),
-        supabase.from('evidencias').select('puntuacion').eq('estudiante_id', estudianteData.id).eq('estado', 'aprobado')
+        supabase.from('evidencias').select('puntuacion').eq('estudiante_id', estudianteData.id).eq('estado', 'aprobado'),
+        nivelIdsParaRetos.length
+          ? supabase.from('retos').select('*', { count: 'exact', head: true }).in('nivel_id', nivelIdsParaRetos)
+          : Promise.resolve({ count: 0 })
       ])
 
       const totalPuntos = (evAprobadas || []).reduce((s, e) => s + (e.puntuacion || 0), 0)
       setPuntuacionTotal(totalPuntos)
+      setRetosAprobadosCount(evAprobadas?.length || 0)
+      setTotalRetos(totalRetosCount || 0)
 
       const nivelesCompletados = new Set(insigniasData?.map(i => i.nivel_id) || [])
 
@@ -237,7 +245,7 @@ function DashboardEstudianteGamificado() {
 
   const rango = obtenerRango(puntuacionTotal, estudiante?.tipo_proyecto || 'cafe')
   const nivelesCompletados = niveles.filter(n => n.completado).length
-  const porcentajeProgreso = niveles.length > 0 ? (nivelesCompletados / niveles.length) * 100 : 0
+  const porcentajeProgreso = totalRetos > 0 ? (retosAprobadosCount / totalRetos) * 100 : 0
   const retosCompletados = useMemo(() => {
     return Object.values(retosPorNivel).flat().length
   }, [retosPorNivel])
@@ -365,7 +373,7 @@ function DashboardEstudianteGamificado() {
           />
         </div>
         <p className="text-xs text-[#a68a64] mt-2">
-          {nivelesCompletados} de {niveles.length} niveles completados
+          {retosAprobadosCount} de {totalRetos} retos completados
         </p>
       </div>
 
@@ -668,7 +676,7 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
               <p className="text-xs sm:text-sm text-[#4a3222]">{evidencia.texto_respuesta}</p>
             </div>
           )}
-          {imagenesEvidencia.length > 0 && (
+          {imagenesEvidencia.length > 0 && !mostrarFormulario && (
             <div className="p-3 bg-[#f5efe6] rounded-lg border border-[#e8dcca]">
               <p className="text-xs font-semibold text-[#6b4c3a] mb-2">🖼️ Tus imágenes</p>
               <ImageViewer images={imagenesEvidencia} />
@@ -729,6 +737,8 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
   const [loading, setLoading] = useState(false)
   const [vistaPrevia, setVistaPrevia] = useState([])
   const [dragOver, setDragOver] = useState(false)
+  const [archivosExistentes, setArchivosExistentes] = useState(evidenciaExistente?.evidencias_archivos || [])
+  const [eliminados, setEliminados] = useState([])
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -764,6 +774,11 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
     setArchivos(prev => prev.filter((_, i) => i !== index))
   }
 
+  const quitarExistente = (archivo) => {
+    setArchivosExistentes(prev => prev.filter(a => a.id !== archivo.id))
+    setEliminados(prev => [...prev, archivo])
+  }
+
   const handleDrop = (e) => {
     e.preventDefault()
     setDragOver(false)
@@ -786,6 +801,15 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
       if (evidenciaExistente) {
         const { error } = await supabase.from('evidencias').update(evidenciaData).eq('id', evidenciaId)
         if (error) throw error
+        // Borrar solo los archivos que el estudiante quitó
+        for (const archivo of eliminados) {
+          const marker = '/object/public/evidencias/'
+          const i = archivo.url?.indexOf(marker) ?? -1
+          if (i !== -1) {
+            await supabase.storage.from('evidencias').remove([archivo.url.slice(i + marker.length)])
+          }
+          await supabase.from('evidencias_archivos').delete().eq('id', archivo.id)
+        }
       } else {
         const { data, error } = await supabase.from('evidencias').insert(evidenciaData).select()
         if (error) throw error
@@ -796,8 +820,13 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
 
       for (const archivo of archivos) {
         const tipo = archivo.type.startsWith('image/') ? 'imagen' : 'video'
-        const fileName = `${evidenciaId}/${Date.now()}_${archivo.name}`
-        const { error: uploadError } = await supabase.storage.from('evidencias').upload(fileName, archivo)
+        // Sanitizar nombre: sin espacios ni caracteres especiales
+        const ext = archivo.name.split('.').pop().toLowerCase()
+        const safeExt = ext.replace(/[^a-z0-9]/g, '')
+        const fileName = `${evidenciaId}/${Date.now()}.${safeExt}`
+        const { error: uploadError } = await supabase.storage
+          .from('evidencias')
+          .upload(fileName, archivo, { upsert: true })
         if (uploadError) { console.error('Error subiendo archivo:', uploadError); continue }
         const { data: urlData } = supabase.storage.from('evidencias').getPublicUrl(fileName)
         await supabase.from('evidencias_archivos').insert({
@@ -838,6 +867,43 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
 
       {(puedeSubirImagen || puedeSubirVideo) && (
         <div>
+          {/* Archivos actuales (al editar) */}
+          {archivosExistentes.length > 0 && (
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-[#4a3222] mb-1.5 uppercase tracking-wide">
+                🗂️ Archivos actuales
+              </label>
+              <p className="text-[11px] text-[#a68a64] mb-2">Quita los que no quieras conservar y agrega nuevos abajo.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {archivosExistentes.map((archivo) => (
+                  <div key={archivo.id} className="relative group rounded-xl overflow-hidden border border-[#e8dcca] bg-white shadow-sm">
+                    {archivo.tipo_archivo === 'imagen' ? (
+                      <img src={archivo.url} alt={archivo.nombre_original || 'Archivo'} className="w-full h-20 sm:h-24 object-cover" />
+                    ) : (
+                      <div className="w-full h-20 sm:h-24 flex flex-col items-center justify-center bg-[#f5efe6]">
+                        <span className="text-2xl">🎥</span>
+                        <span className="text-[10px] text-[#a68a64] mt-1">Video</span>
+                      </div>
+                    )}
+                    <div className="px-2 py-1.5">
+                      <p className="text-[10px] text-[#4a3222] font-medium truncate" title={archivo.nombre_original}>
+                        {archivo.nombre_original || 'Archivo'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => quitarExistente(archivo)}
+                      className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-all shadow-md"
+                      title="Quitar archivo"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <label className="block text-xs font-semibold text-[#4a3222] mb-1.5 uppercase tracking-wide">
             📎 Archivos a subir
           </label>

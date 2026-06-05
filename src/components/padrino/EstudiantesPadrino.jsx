@@ -2,17 +2,21 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { getAvatarById } from '../../data/avatares'
 import { Avatar } from '../comunes/Avatar'
+import { EstudianteDetalleModal } from './EstudianteDetalleModal'
 
 export function EstudiantesPadrino() {
   const [estudiantes, setEstudiantes] = useState([])
   const [loading, setLoading] = useState(true)
   const [municipios, setMunicipios] = useState([])
   const [instituciones, setInstituciones] = useState([])
-  const [filtros, setFiltros] = useState({ 
-    grado: '', 
-    tipo_proyecto: '', 
-    municipio_id: '', 
-    institucion_id: '' 
+  const [vista, setVista] = useState('tarjetas') // 'tarjetas' | 'lista'
+  const [busqueda, setBusqueda] = useState('')
+  const [seleccionado, setSeleccionado] = useState(null)
+  const [filtros, setFiltros] = useState({
+    grado: '',
+    tipo_proyecto: '',
+    municipio_id: '',
+    institucion_id: ''
   })
 
   useEffect(() => {
@@ -104,7 +108,13 @@ export function EstudiantesPadrino() {
 
   const limpiarFiltros = () => {
     setFiltros({ grado: '', tipo_proyecto: '', municipio_id: '', institucion_id: '' })
+    setBusqueda('')
   }
+
+  const estudiantesFiltrados = busqueda.trim()
+    ? estudiantes.filter(e =>
+        e.nombre_completo?.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    : estudiantes
 
   return (
     <div className="p-6">
@@ -117,6 +127,46 @@ export function EstudiantesPadrino() {
 
         {/* Filtros */}
         <div className="bg-white rounded-xl shadow-md p-4 mb-6 border border-[#e8dcca]">
+          {/* Buscador + cambio de vista */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-3">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a68a64] text-sm pointer-events-none">🔍</span>
+              <input
+                type="text"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por nombre..."
+                className="w-full pl-9 pr-8 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] placeholder-[#a68a64]"
+              />
+              {busqueda && (
+                <button
+                  onClick={() => setBusqueda('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#a68a64] hover:text-[#4a3222] text-sm"
+                  aria-label="Limpiar búsqueda"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <div className="flex bg-[#f5efe6] rounded-lg p-1 border border-[#e8dcca] self-start">
+              <button
+                onClick={() => setVista('tarjetas')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition flex items-center gap-1.5 ${
+                  vista === 'tarjetas' ? 'bg-white text-[#4a3222] shadow-sm' : 'text-[#a68a64] hover:text-[#6b4c3a]'
+                }`}
+              >
+                ▦ Tarjetas
+              </button>
+              <button
+                onClick={() => setVista('lista')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition flex items-center gap-1.5 ${
+                  vista === 'lista' ? 'bg-white text-[#4a3222] shadow-sm' : 'text-[#a68a64] hover:text-[#6b4c3a]'
+                }`}
+              >
+                ☰ Lista
+              </button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="block text-sm text-[#6b4c3a] mb-1">Grado</label>
@@ -182,7 +232,7 @@ export function EstudiantesPadrino() {
               🧹 Limpiar filtros
             </button>
             <span className="text-xs text-[#a68a64]">
-              {estudiantes.length} estudiantes encontrados
+              {estudiantesFiltrados.length} estudiantes encontrados
             </span>
           </div>
         </div>
@@ -193,26 +243,32 @@ export function EstudiantesPadrino() {
             <div className="text-4xl animate-pulse mb-2">👨‍🎓</div>
             <p>Cargando estudiantes...</p>
           </div>
-        ) : estudiantes.length === 0 ? (
+        ) : estudiantesFiltrados.length === 0 ? (
           <div className="bg-white rounded-xl shadow-md p-12 text-center border border-[#e8dcca]">
             <span className="text-6xl mb-4 block">📭</span>
-            <p className="text-[#a68a64] text-lg">No hay estudiantes que coincidan con los filtros</p>
+            <p className="text-[#a68a64] text-lg">
+              {busqueda ? 'Ningún estudiante coincide con la búsqueda' : 'No hay estudiantes que coincidan con los filtros'}
+            </p>
             <p className="text-sm text-[#a68a64] mt-2">Prueba cambiando los criterios de búsqueda</p>
           </div>
-        ) : (
+        ) : vista === 'tarjetas' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {estudiantes.map((est) => {
+            {estudiantesFiltrados.map((est) => {
               const avatar = getAvatarById(est.avatar_id || 1)
               return (
-                <div key={est.id} className="bg-white rounded-xl shadow-md overflow-hidden border border-[#e8dcca] hover:shadow-lg transition">
+                <button
+                  key={est.id}
+                  onClick={() => setSeleccionado(est)}
+                  className="text-left bg-white rounded-xl shadow-md overflow-hidden border border-[#e8dcca] hover:shadow-lg hover:border-[#d4c4a8] transition group"
+                >
                   <div className="p-4 border-b bg-gradient-to-r from-[#f5efe6] to-white">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-[#f5efe6] flex items-center justify-center overflow-hidden">
                         <Avatar avatar={avatar} size="lg" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-[#4a3222]">{est.nombre_completo}</h3>
-                        <p className="text-xs text-[#a68a64]">{est.email}</p>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-[#4a3222] truncate">{est.nombre_completo}</h3>
+                        <p className="text-xs text-[#a68a64] truncate">{est.email}</p>
                       </div>
                     </div>
                   </div>
@@ -237,14 +293,49 @@ export function EstudiantesPadrino() {
                       <span className="text-[#a68a64]">⭐ Puntos:</span>
                       <span className="text-[#6b4c3a] font-bold">{est.puntuacion_total || 0}</span>
                     </p>
-                    <p className="text-xs text-[#a68a64] mt-2">
-                      📅 Registrado: {new Date(est.created_at).toLocaleDateString('es-CO')}
+                    <p className="text-[11px] text-[#8b6b54] mt-2 font-medium group-hover:text-[#6b4c3a] flex items-center gap-1">
+                      Ver detalle →
                     </p>
                   </div>
-                </div>
+                </button>
               )
             })}
           </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-md border border-[#e8dcca] overflow-hidden divide-y divide-[#f0e8dc]">
+            {estudiantesFiltrados.map((est) => {
+              const avatar = getAvatarById(est.avatar_id || 1)
+              return (
+                <button
+                  key={est.id}
+                  onClick={() => setSeleccionado(est)}
+                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-[#faf7f3] transition group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[#f5efe6] flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <Avatar avatar={avatar} size="md" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-[#4a3222] truncate text-sm">{est.nombre_completo}</h3>
+                    <p className="text-xs text-[#a68a64] truncate">
+                      {est.grado}° · {est.tipo_proyecto === 'cafe' ? '☕ Café' : '🌽 Alimentaria'} · {est.instituciones?.nombre || 'N/A'}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-[#6b4c3a] font-bold text-sm">⭐ {est.puntuacion_total || 0}</p>
+                    <p className="text-[10px] text-[#a68a64]">{est.municipios?.nombre || 'N/A'}</p>
+                  </div>
+                  <span className="text-[#a68a64] group-hover:text-[#6b4c3a] flex-shrink-0">›</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {seleccionado && (
+          <EstudianteDetalleModal
+            estudiante={seleccionado}
+            onClose={() => setSeleccionado(null)}
+          />
         )}
     </div>
   )

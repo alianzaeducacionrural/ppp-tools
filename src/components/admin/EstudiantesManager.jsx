@@ -75,10 +75,24 @@ export function EstudiantesManager() {
   }
 
   async function handleDelete(id) {
-    if (confirm('¿Eliminar este estudiante? También se eliminarán sus evidencias.')) {
+    if (confirm('¿Eliminar este estudiante? Se borrarán sus evidencias, insignias y todos sus datos.')) {
+      // Obtener IDs de evidencias del estudiante para borrar archivos
+      const { data: evidencias } = await supabase
+        .from('evidencias')
+        .select('id')
+        .eq('estudiante_id', id)
+
+      if (evidencias?.length) {
+        const evidenciaIds = evidencias.map(e => e.id)
+        await supabase.from('evidencias_archivos').delete().in('evidencia_id', evidenciaIds)
+        await supabase.from('evidencias').delete().in('id', evidenciaIds)
+      }
+
+      await supabase.from('insignias_obtenidas').delete().eq('estudiante_id', id)
+
       const { error } = await supabase.from('estudiantes').delete().eq('id', id)
       if (error) {
-        toast.error('Error al eliminar')
+        toast.error('Error al eliminar: ' + error.message)
       } else {
         toast.success('Estudiante eliminado')
         cargarEstudiantes()
