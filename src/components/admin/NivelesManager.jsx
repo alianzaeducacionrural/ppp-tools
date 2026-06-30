@@ -320,11 +320,12 @@ export function NivelesManager() {
 // ============================================
 function FormularioNivel({ nivel, onClose, onSave }) {
   const [formData, setFormData] = useState({
-    tipo_proyecto: nivel?.tipo_proyecto || 'cafe',
-    grado:         String(nivel?.grado || '5'),
-    numero_nivel:  String(nivel?.numero_nivel || '1'),
-    nombre:        nivel?.nombre || '',
-    imagen_url:    nivel?.imagen_url || '',
+    tipo_proyecto:   nivel?.tipo_proyecto || 'cafe',
+    grado:           String(nivel?.grado || '5'),
+    numero_nivel:    String(nivel?.numero_nivel || '1'),
+    nombre:          nivel?.nombre || '',
+    imagen_nivel_url: nivel?.imagen_nivel_url || '',
+    insignia_url:    nivel?.insignia_url || '',
   })
   const [loading, setLoading] = useState(false)
 
@@ -411,10 +412,19 @@ function FormularioNivel({ nivel, onClose, onSave }) {
           </div>
 
           <div>
-            <label className="block text-sm text-[#6b4c3a] font-medium mb-1">URL de Imagen (opcional)</label>
-            <input type="url" name="imagen_url" value={formData.imagen_url} onChange={handleChange}
+            <label className="block text-sm text-[#6b4c3a] font-medium mb-1">🖼️ URL de imagen del nivel (opcional)</label>
+            <input type="url" name="imagen_nivel_url" value={formData.imagen_nivel_url} onChange={handleChange}
               className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-sm"
               placeholder="https://..." />
+            <p className="text-xs text-[#a68a64] mt-0.5">Se muestra en la tarjeta del nivel</p>
+          </div>
+
+          <div>
+            <label className="block text-sm text-[#6b4c3a] font-medium mb-1">🏅 URL de insignia (opcional)</label>
+            <input type="url" name="insignia_url" value={formData.insignia_url} onChange={handleChange}
+              className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-sm"
+              placeholder="https://..." />
+            <p className="text-xs text-[#a68a64] mt-0.5">Badge que el estudiante gana al completar el nivel</p>
           </div>
 
           <div className="flex gap-3 pt-2">

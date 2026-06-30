@@ -7,6 +7,7 @@ export function PadrinosManager() {
   const [padrinos, setPadrinos] = useState([])
   const [loading, setLoading] = useState(true)
   const [passwordModal, setPasswordModal] = useState({ open: false, usuario: null })
+  const [editModal, setEditModal] = useState({ open: false, padrino: null })
   const [formData, setFormData] = useState({ email: '', nombre: '', password: '' })
 
   useEffect(() => {
@@ -79,6 +80,19 @@ export function PadrinosManager() {
       await cargarPadrinos()
     }
     setLoading(false)
+  }
+
+  async function handleToggleActivo(padrino) {
+    const { error } = await supabase
+      .from('padrinos')
+      .update({ activo: !padrino.activo })
+      .eq('id', padrino.id)
+    if (error) {
+      toast.error('Error al actualizar estado')
+    } else {
+      toast.success(padrino.activo ? 'Padrino desactivado' : 'Padrino activado')
+      await cargarPadrinos()
+    }
   }
 
   async function handleEliminarPadrino(id) {
@@ -189,18 +203,28 @@ export function PadrinosManager() {
                       {new Date(padrino.created_at).toLocaleDateString('es-CO')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        padrino.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
+                      <button
+                        onClick={() => handleToggleActivo(padrino)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium transition hover:opacity-80 ${
+                          padrino.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}
+                        title={padrino.activo ? 'Clic para desactivar' : 'Clic para activar'}
+                      >
                         {padrino.activo ? '✅ Activo' : '❌ Inactivo'}
-                      </span>
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <button
+                        onClick={() => setEditModal({ open: true, padrino })}
+                        className="text-[#6b4c3a] hover:text-[#4a3222] mr-3 text-sm font-medium inline-flex items-center gap-1"
+                      >
+                        ✏️ Editar
+                      </button>
                       <button
                         onClick={() => setPasswordModal({ open: true, usuario: padrino })}
                         className="text-[#6b4c3a] hover:text-[#4a3222] mr-3 text-sm font-medium inline-flex items-center gap-1"
                       >
-                        🔑 Cambiar pass
+                        🔑 Contraseña
                       </button>
                       <button
                         onClick={() => handleEliminarPadrino(padrino.id)}
@@ -238,6 +262,66 @@ export function PadrinosManager() {
           onSuccess={cargarPadrinos}
         />
       )}
+
+      {editModal.open && editModal.padrino && (
+        <EditarPadrinoModal
+          padrino={editModal.padrino}
+          onClose={() => setEditModal({ open: false, padrino: null })}
+          onSuccess={cargarPadrinos}
+        />
+      )}
+    </div>
+  )
+}
+
+function EditarPadrinoModal({ padrino, onClose, onSuccess }) {
+  const [nombre, setNombre] = useState(padrino.nombre || '')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!nombre.trim()) { toast.error('El nombre no puede estar vacío'); return }
+    setLoading(true)
+    const { error } = await supabase.from('padrinos').update({ nombre: nombre.trim() }).eq('id', padrino.id)
+    if (error) {
+      toast.error('Error al actualizar: ' + error.message)
+    } else {
+      toast.success('Padrino actualizado')
+      onSuccess()
+      onClose()
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl border border-[#e8dcca]">
+        <h3 className="text-lg font-semibold text-[#4a3222] mb-1">✏️ Editar padrino</h3>
+        <p className="text-xs text-[#a68a64] mb-4">{padrino.email}</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-[#6b4c3a] mb-1 font-medium text-sm">Nombre completo</label>
+            <input
+              type="text"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222]"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button type="submit" disabled={loading}
+              className="flex-1 bg-[#6b4c3a] text-white py-2 rounded-lg hover:bg-[#4a3222] disabled:opacity-50 transition text-sm">
+              {loading ? 'Guardando...' : 'Guardar'}
+            </button>
+            <button type="button" onClick={onClose}
+              className="flex-1 bg-[#e8dcca] text-[#6b4c3a] py-2 rounded-lg hover:bg-[#d4c4a8] transition text-sm">
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
