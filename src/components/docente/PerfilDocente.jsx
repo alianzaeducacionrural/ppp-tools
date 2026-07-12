@@ -12,7 +12,7 @@ export function PerfilDocente() {
   const [editando, setEditando]                 = useState(false)
   const [cambiandoPassword, setCambiandoPassword] = useState(false)
   const [seleccionandoAvatar, setSeleccionandoAvatar] = useState(false)
-  const [formData, setFormData]                 = useState({ nombre_completo: '', telefono: '', cargo: '', email: '' })
+  const [formData, setFormData]                 = useState({ nombre_completo: '', telefono: '', email: '' })
   const [passwordData, setPasswordData]         = useState({ nueva: '', confirmar: '' })
   const [user, setUser]                         = useState(null)
   const [docente, setDocente]                   = useState(null)
@@ -31,7 +31,6 @@ export function PerfilDocente() {
         setFormData({
           nombre_completo: data.nombre_completo || '',
           telefono: data.telefono || '',
-          cargo: data.cargo || '',
           email: authUser.email
         })
       }
@@ -57,7 +56,7 @@ export function PerfilDocente() {
     setLoading(true)
     const { error } = await supabase
       .from('docentes')
-      .update({ nombre_completo: formData.nombre_completo, telefono: formData.telefono, cargo: formData.cargo })
+      .update({ nombre_completo: formData.nombre_completo, telefono: formData.telefono })
       .eq('user_id', user.id)
     if (error) {
       toast.error('Error al actualizar perfil')
@@ -114,7 +113,7 @@ export function PerfilDocente() {
             </button>
           </div>
           <div>
-            <p className="text-xs opacity-60 uppercase tracking-widest font-semibold mb-0.5">Docente · Maestro PPP</p>
+            <p className="text-xs opacity-60 uppercase tracking-widest font-semibold mb-0.5">Docente PPP</p>
             <h2 className="text-xl font-bold leading-tight">{nombreMostrado}</h2>
             <p className="text-xs opacity-60 mt-0.5">{user?.email}</p>
           </div>
@@ -140,10 +139,6 @@ export function PerfilDocente() {
               <div className="bg-[#faf7f3] rounded-xl p-3 border border-[#e8dcca]">
                 <p className={LABEL_CLS}>📞 Teléfono</p>
                 <p className="text-sm font-medium text-[#4a3222]">{docente?.telefono || 'No especificado'}</p>
-              </div>
-              <div className="bg-[#faf7f3] rounded-xl p-3 border border-[#e8dcca]">
-                <p className={LABEL_CLS}>💼 Cargo</p>
-                <p className="text-sm font-medium text-[#4a3222]">{docente?.cargo || 'No especificado'}</p>
               </div>
               <div className="bg-[#faf7f3] rounded-xl p-3 border border-[#e8dcca] sm:col-span-2">
                 <p className={LABEL_CLS}>📍 Institución</p>
@@ -194,15 +189,6 @@ export function PerfilDocente() {
                 type="tel"
                 value={formData.telefono}
                 onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                className={INPUT_CLS}
-              />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>Cargo</label>
-              <input
-                type="text"
-                value={formData.cargo}
-                onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
                 className={INPUT_CLS}
               />
             </div>

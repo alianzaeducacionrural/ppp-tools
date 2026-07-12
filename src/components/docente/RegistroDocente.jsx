@@ -19,7 +19,6 @@ export function RegistroDocente() {
     tipo_documento: 'CC',
     numero_documento: '',
     telefono: '',
-    cargo: '',
     municipio_id: '',
     institucion_id: '',
     sede_id: ''
@@ -121,7 +120,7 @@ export function RegistroDocente() {
         tipo_documento: formData.tipo_documento,
         numero_documento: formData.numero_documento,
         telefono: formData.telefono,
-        cargo: formData.cargo,
+        cargo: 'Docente',
         municipio_id: parseInt(formData.municipio_id),
         institucion_id: parseInt(formData.institucion_id),
         sede_id: parseInt(formData.sede_id),
@@ -253,18 +252,6 @@ export function RegistroDocente() {
                       onChange={handleChange}
                       className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
                       placeholder="Número de contacto"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[#4a3222] font-medium mb-1 text-sm">Cargo *</label>
-                    <input
-                      type="text"
-                      name="cargo"
-                      value={formData.cargo}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition"
-                      placeholder="Ej: Docente, Coordinador..."
                       required
                     />
                   </div>
