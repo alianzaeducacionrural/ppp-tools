@@ -55,6 +55,20 @@ export function AuthProvider({ children }) {
         return
       }
 
+      const { data: docenteData } = await supabase
+        .from('docentes')
+        .select('id')
+        .eq('user_id', userData.id)
+        .maybeSingle()
+
+      if (docenteData) {
+        setRol('docente')
+        rolRef.current = 'docente'
+        userIdRef.current = userData.id
+        setLoading(false)
+        return
+      }
+
       const { data: estudianteData } = await supabase
         .from('estudiantes')
         .select('id')

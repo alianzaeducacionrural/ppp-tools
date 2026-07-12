@@ -10,6 +10,7 @@ import { EstudiantesPadrino } from './EstudiantesPadrino'
 import { PerfilPadrino } from './PerfilPadrino'
 import { AyudaPadrino } from './AyudaPadrino'
 import { RankingParticipantes } from '../comunes/RankingParticipantes'
+import { ProyectosDirigidosPadrino } from './ProyectosDirigidosPadrino'
 
 // ============================================
 // COMPONENTE PRINCIPAL DE EVIDENCIAS (Dashboard)
@@ -584,6 +585,7 @@ export default function DashboardPadrino() {
       <div className={`transition-all duration-300 ${sidebarOpen ? 'md:ml-72' : 'md:ml-20'} pb-16 md:pb-0`}>
         <Routes>
           <Route path="/" element={<DashboardEvidencias />} />
+          <Route path="/proyectos-dirigidos" element={<ProyectosDirigidosPadrino />} />
           <Route path="/estadisticas" element={<EstadisticasPadrino />} />
           <Route path="/ranking" element={<RankingParticipantes />} />
           <Route path="/estudiantes" element={<EstudiantesPadrino />} />

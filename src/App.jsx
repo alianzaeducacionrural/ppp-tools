@@ -3,10 +3,11 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { Login } from './components/comunes/Login'
-import { Registro } from './components/estudiante/Registro'
+import { SeleccionRegistro } from './components/comunes/SeleccionRegistro'
 import DashboardEstudianteGamificado from './components/estudiante/DashboardEstudianteGamificado'
 import DashboardPadrino from './components/padrino/DashboardPadrino'
 import DashboardAdmin from './components/admin/DashboardAdmin'
+import DashboardDocente from './components/docente/DashboardDocente'
 
 function LoadingScreen() {
   return (
@@ -21,11 +22,18 @@ function LoadingScreen() {
   )
 }
 
+function rutaParaRol(rol) {
+  if (rol === 'admin') return '/admin'
+  if (rol === 'padrino') return '/padrino'
+  if (rol === 'docente') return '/docente'
+  return '/'
+}
+
 function EstudianteRoute({ children }) {
   const { user, rol, loading } = useAuth()
   if (loading) return <LoadingScreen />
   if (!user || !rol) return <Navigate to="/login" replace />
-  if (rol !== 'estudiante') return <Navigate to={rol === 'padrino' ? '/padrino' : '/admin'} replace />
+  if (rol !== 'estudiante') return <Navigate to={rutaParaRol(rol)} replace />
   return children
 }
 
@@ -33,7 +41,7 @@ function PadrinoRoute({ children }) {
   const { user, rol, loading } = useAuth()
   if (loading) return <LoadingScreen />
   if (!user || !rol) return <Navigate to="/login" replace />
-  if (rol !== 'padrino') return <Navigate to={rol === 'admin' ? '/admin' : '/'} replace />
+  if (rol !== 'padrino') return <Navigate to={rutaParaRol(rol)} replace />
   return children
 }
 
@@ -41,7 +49,15 @@ function AdminRoute({ children }) {
   const { user, rol, loading } = useAuth()
   if (loading) return <LoadingScreen />
   if (!user || !rol) return <Navigate to="/login" replace />
-  if (rol !== 'admin') return <Navigate to={rol === 'padrino' ? '/padrino' : '/'} replace />
+  if (rol !== 'admin') return <Navigate to={rutaParaRol(rol)} replace />
+  return children
+}
+
+function DocenteRoute({ children }) {
+  const { user, rol, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (!user || !rol) return <Navigate to="/login" replace />
+  if (rol !== 'docente') return <Navigate to={rutaParaRol(rol)} replace />
   return children
 }
 
@@ -92,7 +108,7 @@ function AppRoutes() {
     <Routes>
       {/* Rutas públicas */}
       <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
-      <Route path="/registro" element={!user ? <Registro /> : <Navigate to="/" replace />} />
+      <Route path="/registro" element={!user ? <SeleccionRegistro /> : <Navigate to="/" replace />} />
 
       {/* Rutas del estudiante */}
       <Route path="/" element={<EstudianteRoute><DashboardEstudianteGamificado /></EstudianteRoute>} />
@@ -101,8 +117,9 @@ function AppRoutes() {
       <Route path="/insignias" element={<EstudianteRoute><DashboardEstudianteGamificado /></EstudianteRoute>} />
       <Route path="/ayuda" element={<EstudianteRoute><DashboardEstudianteGamificado /></EstudianteRoute>} />
 
-      {/* Rutas de padrino y admin */}
+      {/* Rutas de padrino, docente y admin */}
       <Route path="/padrino/*" element={<PadrinoRoute><DashboardPadrino /></PadrinoRoute>} />
+      <Route path="/docente/*" element={<DocenteRoute><DashboardDocente /></DocenteRoute>} />
       <Route path="/admin" element={<AdminRoute><DashboardAdmin /></AdminRoute>} />
 
       {/* Ruta por defecto */}

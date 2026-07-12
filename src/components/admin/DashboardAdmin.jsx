@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { NivelesManager } from './NivelesManager'
 import { EstudiantesManager } from './EstudiantesManager'
 import { PadrinosManager } from './PadrinosManager'
+import { DocentesManager } from './DocentesManager'
 import { ReportesExport } from './ReportesExport'
 import { RankingParticipantes } from '../comunes/RankingParticipantes'
 
@@ -15,6 +16,7 @@ const menuItems = [
   { id: 'niveles',     label: 'Niveles',    icono: '📚', descripcion: 'Gestionar niveles y retos' },
   { id: 'estudiantes', label: 'Estudiantes',icono: '👨‍🎓', descripcion: 'Ver estudiantes' },
   { id: 'padrinos',    label: 'Padrinos',   icono: '👥', descripcion: 'Gestionar padrinos' },
+  { id: 'docentes',    label: 'Docentes',   icono: '🌱', descripcion: 'Gestionar docentes' },
   { id: 'reportes',    label: 'Reportes',   icono: '📄', descripcion: 'Exportar datos' },
 ]
 
@@ -236,6 +238,7 @@ function DashboardAdmin() {
     niveles:     { titulo: '📚 Niveles', sub: 'Crea y gestiona los niveles y sus retos' },
     estudiantes: { titulo: '👨‍🎓 Estudiantes', sub: 'Listado y gestión de estudiantes registrados' },
     padrinos:    { titulo: '👥 Padrinos', sub: 'Gestiona los padrinos colaboradores' },
+    docentes:    { titulo: '🌱 Docentes', sub: 'Gestiona los docentes y sus proyectos dirigidos' },
     reportes:    { titulo: '📄 Reportes', sub: 'Exporta datos del programa a Excel' },
   }
 
@@ -268,6 +271,7 @@ function DashboardAdmin() {
             {activeTab === 'niveles'     && <NivelesManager />}
             {activeTab === 'estudiantes' && <EstudiantesManager />}
             {activeTab === 'padrinos'    && <PadrinosManager />}
+            {activeTab === 'docentes'    && <DocentesManager />}
             {activeTab === 'reportes'    && <ReportesExport />}
           </div>
         </div>

@@ -3,19 +3,18 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
 const MENU_ITEMS = [
-  { id: 'dashboard',    label: 'Dashboard',    icono: '📊', path: '/padrino',                     descripcion: 'Evidencias pendientes' },
-  { id: 'proyectos',    label: 'Proy. Dirigidos', icono: '🌱', path: '/padrino/proyectos-dirigidos', descripcion: 'Revisar proyectos de docentes' },
-  { id: 'estadisticas', label: 'Estadísticas', icono: '📈', path: '/padrino/estadisticas',        descripcion: 'Gráficos y reportes' },
-  { id: 'ranking',      label: 'Ranking',      icono: '🏆', path: '/padrino/ranking',             descripcion: 'Clasificación de participantes' },
-  { id: 'estudiantes',  label: 'Estudiantes',  icono: '👨‍🎓', path: '/padrino/estudiantes',         descripcion: 'Ver todos los estudiantes' },
-  { id: 'perfil',       label: 'Mi Perfil',    icono: '👤', path: '/padrino/perfil',               descripcion: 'Gestiona tu cuenta' },
-  { id: 'ayuda',        label: 'Ayuda',        icono: '❓', path: '/padrino/ayuda',                descripcion: 'Guía y soporte' },
+  { id: 'proyectos',    label: 'Mis Proyectos',  icono: '🌱', path: '/docente',               descripcion: 'Tus proyectos dirigidos' },
+  { id: 'estudiantes',  label: 'Estudiantes',    icono: '👨‍🎓', path: '/docente/estudiantes',   descripcion: 'De tu institución' },
+  { id: 'ranking',      label: 'Ranking',        icono: '📊', path: '/docente/ranking',       descripcion: 'Clasificación de estudiantes' },
+  { id: 'podio',        label: 'Podio Docentes', icono: '🏆', path: '/docente/podio',         descripcion: 'Ranking de proyectos dirigidos' },
+  { id: 'perfil',       label: 'Mi Perfil',      icono: '👤', path: '/docente/perfil',        descripcion: 'Gestiona tu cuenta' },
+  { id: 'ayuda',        label: 'Ayuda',          icono: '❓', path: '/docente/ayuda',         descripcion: 'Guía y soporte' },
 ]
 
-export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
+export function SidebarDocente({ isOpen, onToggle, onLogout, user }) {
   const navigate   = useNavigate()
   const location   = useLocation()
-  const [nombrePadrino, setNombrePadrino] = useState('')
+  const [nombreDocente, setNombreDocente] = useState('')
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
   useEffect(() => {
@@ -25,16 +24,16 @@ export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
   }, [])
 
   useEffect(() => {
-    if (user?.id) cargarNombrePadrino()
+    if (user?.id) cargarNombreDocente()
   }, [user?.id])
 
-  async function cargarNombrePadrino() {
+  async function cargarNombreDocente() {
     const { data } = await supabase
-      .from('padrinos')
-      .select('nombre')
+      .from('docentes')
+      .select('nombre_completo')
       .eq('user_id', user.id)
       .single()
-    setNombrePadrino(data?.nombre || user.email?.split('@')[0] || 'Padrino')
+    setNombreDocente(data?.nombre_completo || user.email?.split('@')[0] || 'Docente')
   }
 
   // ── MÓVIL: barra de navegación inferior ────────────────────────────────────
@@ -97,11 +96,11 @@ export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
             className="hover:bg-[#8b6b54] p-2 rounded-lg transition-colors"
             title={isOpen ? 'Contraer menú' : 'Expandir menú'}
           >
-            <span className="text-2xl">👨‍🏫</span>
+            <span className="text-2xl">🌱</span>
           </button>
           {isOpen && (
             <div className="text-right">
-              <span className="font-bold text-lg tracking-widest block">Padrino</span>
+              <span className="font-bold text-lg tracking-widest block">Docente</span>
               <span className="text-xs text-[#d4c4a8]">Comité de Cafeteros</span>
             </div>
           )}
@@ -112,18 +111,18 @@ export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
           <div className="p-4 border-b border-[#8b6b54] bg-[#4a3222]/50">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#d4c4a8] flex items-center justify-center text-2xl flex-shrink-0">
-                👨‍🏫
+                🌱
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{nombrePadrino}</p>
-                <p className="text-xs text-[#d4c4a8] truncate">Padrino</p>
+                <p className="font-medium truncate">{nombreDocente}</p>
+                <p className="text-xs text-[#d4c4a8] truncate">Docente</p>
               </div>
             </div>
           </div>
         ) : (
           <div className="p-3 border-b border-[#8b6b54] flex justify-center">
             <div className="w-10 h-10 rounded-full bg-[#d4c4a8] flex items-center justify-center text-xl">
-              👨‍🏫
+              🌱
             </div>
           </div>
         )}
