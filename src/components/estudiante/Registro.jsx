@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
+import { getAvataresDesbloqueados } from '../../data/avatares'
 
 export function Registro() {
   const navigate = useNavigate()
@@ -120,6 +121,10 @@ export function Registro() {
       return
     }
 
+    // Asignar un avatar al azar entre los disponibles desde el inicio
+    const avataresIniciales = getAvataresDesbloqueados([])
+    const avatarAleatorio = avataresIniciales[Math.floor(Math.random() * avataresIniciales.length)]
+
     const { error: estudianteError } = await supabase
       .from('estudiantes')
       .insert({
@@ -133,7 +138,8 @@ export function Registro() {
         grado: formData.grado,
         edad: parseInt(formData.edad),
         tipo_proyecto: formData.tipo_proyecto,
-        email: formData.email
+        email: formData.email,
+        avatar_id: avatarAleatorio.id
       })
 
     if (estudianteError) {
