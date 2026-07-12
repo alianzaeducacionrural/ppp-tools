@@ -149,7 +149,7 @@ export function SidebarPadrino({ isOpen, onToggle, onLogout, user }) {
                     <p className={`text-sm font-medium ${isActive ? 'text-[#4a3222]' : 'text-[#f5efe6]'}`}>
                       {item.label}
                     </p>
-                    <p className="text-xs text-[#d4c4a8] opacity-75">{item.descripcion}</p>
+                    <p className={`text-xs opacity-75 ${isActive ? 'text-[#6b4c3a]' : 'text-[#d4c4a8]'}`}>{item.descripcion}</p>
                   </div>
                 )}
                 {!isOpen && (
