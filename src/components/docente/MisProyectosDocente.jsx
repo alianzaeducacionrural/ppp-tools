@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
-import toast from 'react-hot-toast'
 import { FormularioProyectoDirigido } from './FormularioProyectoDirigido'
 
 function EstadoBadge({ estado }) {

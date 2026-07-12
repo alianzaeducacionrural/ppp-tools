@@ -255,8 +255,8 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
                     }`}
                     title={desbloqueado ? avatar.nombre : '🔒 Bloqueado'}
                   >
-                    <div className={`w-12 h-12 mx-auto flex items-center justify-center relative ${!desbloqueado ? 'grayscale' : ''}`}>
-                      <Avatar avatar={avatar} size="lg" />
+                    <div className={`w-14 h-14 mx-auto flex items-center justify-center relative ${!desbloqueado ? 'grayscale' : ''}`}>
+                      <Avatar avatar={avatar} size="lg" className="w-full h-full object-contain" />
                       {!desbloqueado && (
                         <div className="absolute inset-0 flex items-end justify-end">
                           <span className="text-sm bg-white rounded-full leading-none p-0.5">🔒</span>

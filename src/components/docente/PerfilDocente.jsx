@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
+import { avatares, getAvatarById } from '../../data/avatares'
+import { Avatar } from '../comunes/Avatar'
 
 const INPUT_CLS = 'w-full px-3 py-2.5 text-sm border border-[#e8dcca] rounded-xl bg-[#faf7f3] text-[#4a3222] focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] transition'
 const LABEL_CLS = 'block text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1'
@@ -9,6 +11,7 @@ export function PerfilDocente() {
   const [loading, setLoading]                   = useState(false)
   const [editando, setEditando]                 = useState(false)
   const [cambiandoPassword, setCambiandoPassword] = useState(false)
+  const [seleccionandoAvatar, setSeleccionandoAvatar] = useState(false)
   const [formData, setFormData]                 = useState({ nombre_completo: '', telefono: '', cargo: '', email: '' })
   const [passwordData, setPasswordData]         = useState({ nueva: '', confirmar: '' })
   const [user, setUser]                         = useState(null)
@@ -35,6 +38,19 @@ export function PerfilDocente() {
     }
     cargarDatos()
   }, [])
+
+  // Los docentes no avanzan por niveles, así que tienen todos los avatares disponibles
+  const avatarActual = getAvatarById(docente?.avatar_id || 1)
+
+  async function handleCambiarAvatar(avatarId) {
+    const { error } = await supabase.from('docentes').update({ avatar_id: avatarId }).eq('id', docente.id)
+    if (error) { toast.error('Error al cambiar avatar') }
+    else {
+      toast.success('Avatar actualizado')
+      setDocente(prev => ({ ...prev, avatar_id: avatarId }))
+      setSeleccionandoAvatar(false)
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -85,8 +101,17 @@ export function PerfilDocente() {
         <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-white/5" />
         <div className="absolute bottom-0 left-0 text-[80px] opacity-[0.05] leading-none select-none">🌱</div>
         <div className="flex items-center gap-4 relative">
-          <div className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-3xl flex-shrink-0 shadow-lg">
-            🌱
+          <div className="relative flex-shrink-0">
+            <div className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/30 overflow-hidden shadow-lg">
+              <Avatar avatar={avatarActual} size="lg" className="w-full h-full object-cover rounded-full" />
+            </div>
+            <button
+              onClick={() => setSeleccionandoAvatar(true)}
+              className="absolute -bottom-1 -right-1 bg-white text-[#6b4c3a] w-6 h-6 rounded-full hover:bg-[#f5efe6] transition shadow-md border border-[#e8dcca] flex items-center justify-center text-xs"
+              title="Cambiar avatar"
+            >
+              ✏️
+            </button>
           </div>
           <div>
             <p className="text-xs opacity-60 uppercase tracking-widest font-semibold mb-0.5">Docente · Maestro PPP</p>
@@ -241,6 +266,48 @@ export function PerfilDocente() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Modal de selección de avatar */}
+      {seleccionandoAvatar && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-sm w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-base font-bold text-[#4a3222]">Elige tu avatar</h3>
+                <p className="text-xs text-[#a68a64]">{avatares.length} avatares disponibles</p>
+              </div>
+              <button onClick={() => setSeleccionandoAvatar(false)} className="w-8 h-8 rounded-full bg-[#f5efe6] text-[#6b4c3a] hover:bg-[#e8dcca] transition flex items-center justify-center text-sm font-bold">✕</button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              {avatares.map(avatar => {
+                const isSelected = (docente?.avatar_id || 1) === avatar.id
+                return (
+                  <button
+                    key={avatar.id}
+                    onClick={() => handleCambiarAvatar(avatar.id)}
+                    className={`relative p-2 rounded-xl transition-all text-center ${
+                      isSelected ? 'ring-2 ring-[#6b4c3a] bg-[#f5efe6]'
+                      : 'hover:bg-[#faf7f3] hover:ring-1 hover:ring-[#e8dcca]'
+                    }`}
+                    title={avatar.nombre}
+                  >
+                    <div className="w-14 h-14 mx-auto flex items-center justify-center relative">
+                      <Avatar avatar={avatar} size="lg" className="w-full h-full object-contain" />
+                    </div>
+                    <p className="text-[10px] text-[#4a3222] mt-1 font-medium truncate">{avatar.nombre}</p>
+                    {isSelected && (
+                      <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#6b4c3a] rounded-full flex items-center justify-center">
+                        <span className="text-white text-[8px] font-bold">✓</span>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>

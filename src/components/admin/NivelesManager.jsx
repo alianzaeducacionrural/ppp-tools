@@ -325,7 +325,6 @@ function FormularioNivel({ nivel, onClose, onSave }) {
     numero_nivel:    String(nivel?.numero_nivel || '1'),
     nombre:          nivel?.nombre || '',
     imagen_nivel_url: nivel?.imagen_nivel_url || '',
-    insignia_url:    nivel?.insignia_url || '',
   })
   const [loading, setLoading] = useState(false)
 
@@ -419,12 +418,11 @@ function FormularioNivel({ nivel, onClose, onSave }) {
             <p className="text-xs text-[#a68a64] mt-0.5">Se muestra en la tarjeta del nivel</p>
           </div>
 
-          <div>
-            <label className="block text-sm text-[#6b4c3a] font-medium mb-1">🏅 URL de insignia (opcional)</label>
-            <input type="url" name="insignia_url" value={formData.insignia_url} onChange={handleChange}
-              className="w-full px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-sm"
-              placeholder="https://..." />
-            <p className="text-xs text-[#a68a64] mt-0.5">Badge que el estudiante gana al completar el nivel</p>
+          <div className="bg-[#f5efe6] border border-[#e8dcca] rounded-lg p-2.5">
+            <p className="text-xs text-[#6b4c3a] flex items-start gap-1.5">
+              <span>🏅</span>
+              <span>La insignia se asigna <strong>automáticamente</strong> según el tipo de proyecto y el número de nivel (la misma para todos los grados).</span>
+            </p>
           </div>
 
           <div className="flex gap-3 pt-2">

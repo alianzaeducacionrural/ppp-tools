@@ -1,6 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { getAvatarById } from '../../data/avatares'
+import { Avatar } from '../comunes/Avatar'
 
 const MENU_ITEMS = [
   { id: 'proyectos',    label: 'Mis Proyectos',  icono: '🌱', path: '/docente',               descripcion: 'Tus proyectos dirigidos' },
@@ -15,6 +17,7 @@ export function SidebarDocente({ isOpen, onToggle, onLogout, user }) {
   const navigate   = useNavigate()
   const location   = useLocation()
   const [nombreDocente, setNombreDocente] = useState('')
+  const [avatarId, setAvatarId] = useState(1)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
   useEffect(() => {
@@ -24,17 +27,20 @@ export function SidebarDocente({ isOpen, onToggle, onLogout, user }) {
   }, [])
 
   useEffect(() => {
-    if (user?.id) cargarNombreDocente()
+    if (user?.id) cargarDocente()
   }, [user?.id])
 
-  async function cargarNombreDocente() {
+  async function cargarDocente() {
     const { data } = await supabase
       .from('docentes')
-      .select('nombre_completo')
+      .select('nombre_completo, avatar_id')
       .eq('user_id', user.id)
       .single()
     setNombreDocente(data?.nombre_completo || user.email?.split('@')[0] || 'Docente')
+    setAvatarId(data?.avatar_id || 1)
   }
+
+  const avatarDocente = getAvatarById(avatarId)
 
   // ── MÓVIL: barra de navegación inferior ────────────────────────────────────
   if (isMobile) {
@@ -110,8 +116,8 @@ export function SidebarDocente({ isOpen, onToggle, onLogout, user }) {
         {isOpen ? (
           <div className="p-4 border-b border-[#8b6b54] bg-[#4a3222]/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#d4c4a8] flex items-center justify-center text-2xl flex-shrink-0">
-                🌱
+              <div className="w-10 h-10 rounded-full bg-[#d4c4a8] overflow-hidden flex-shrink-0">
+                <Avatar avatar={avatarDocente} size="md" className="w-full h-full object-cover rounded-full" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{nombreDocente}</p>
@@ -121,8 +127,8 @@ export function SidebarDocente({ isOpen, onToggle, onLogout, user }) {
           </div>
         ) : (
           <div className="p-3 border-b border-[#8b6b54] flex justify-center">
-            <div className="w-10 h-10 rounded-full bg-[#d4c4a8] flex items-center justify-center text-xl">
-              🌱
+            <div className="w-10 h-10 rounded-full bg-[#d4c4a8] overflow-hidden">
+              <Avatar avatar={avatarDocente} size="md" className="w-full h-full object-cover rounded-full" />
             </div>
           </div>
         )}

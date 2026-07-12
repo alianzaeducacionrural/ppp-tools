@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { getAvatarById } from '../../data/avatares'
+import { Avatar } from '../comunes/Avatar'
 
 const PODIO_CONFIG = {
   1: {
@@ -47,8 +49,8 @@ function PodioCard({ docente, posicion }) {
     <div className={`rounded-2xl overflow-hidden border-2 shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5 ${cfg.border} ${cfg.bg}`}>
       <div className={`${cfg.headerBg} pt-3 pb-6 px-3 text-center relative`}>
         <span className={`block mb-1 ${esPrimero ? 'text-3xl' : 'text-2xl'}`}>{cfg.medal}</span>
-        <div className={`${cfg.avatarSize} mx-auto rounded-full bg-white flex items-center justify-center ring-4 ring-white/60 ring-offset-2 ring-offset-transparent shadow-lg`}>
-          🌱
+        <div className={`${cfg.avatarSize} mx-auto rounded-full bg-white overflow-hidden ring-4 ring-white/60 ring-offset-2 ring-offset-transparent shadow-lg`}>
+          <Avatar avatar={getAvatarById(docente?.avatar_id || 1)} size="lg" className="w-full h-full object-cover rounded-full" />
         </div>
       </div>
       <div className="px-3 pt-3 pb-3 text-center -mt-2">
@@ -104,7 +106,7 @@ export function PodioDocentes() {
     const docenteIds = Object.keys(totales)
     const { data: docentesData } = await supabase
       .from('docentes')
-      .select('id, nombre_completo, municipios (nombre), instituciones (nombre)')
+      .select('id, nombre_completo, avatar_id, municipios (nombre), instituciones (nombre)')
       .in('id', docenteIds)
 
     const clasificacion = (docentesData || [])
@@ -168,7 +170,9 @@ export function PodioDocentes() {
                   <div key={d.id} className="bg-white rounded-xl border border-[#e8dcca] transition-all hover:shadow-md overflow-hidden">
                     <div className="flex items-center gap-3 p-3 pl-4">
                       <span className="w-8 text-center font-bold text-sm flex-shrink-0 text-[#a68a64]">{idx + 4}</span>
-                      <div className="w-9 h-9 rounded-full bg-[#f5efe6] flex items-center justify-center flex-shrink-0 border border-[#e8dcca] text-lg">🌱</div>
+                      <div className="w-9 h-9 rounded-full bg-[#f5efe6] overflow-hidden flex-shrink-0 border border-[#e8dcca]">
+                        <Avatar avatar={getAvatarById(d.avatar_id || 1)} size="sm" className="w-full h-full object-cover rounded-full" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm truncate text-[#4a3222]">{d.nombre_completo}</p>
                         <p className="text-[10px] text-[#a68a64] truncate">
