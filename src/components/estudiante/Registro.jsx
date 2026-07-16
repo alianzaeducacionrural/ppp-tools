@@ -105,6 +105,20 @@ export function Registro() {
 
     setLoading(true)
 
+    // Verificar el documento ANTES de crear la cuenta: si el insert fallara después
+    // del signUp, la cuenta quedaría creada sin datos y no se podría reintentar
+    const { data: documentoExistente } = await supabase
+      .from('estudiantes')
+      .select('id')
+      .eq('numero_documento', formData.numero_documento.trim())
+      .maybeSingle()
+
+    if (documentoExistente) {
+      toast.error('Ya hay un estudiante registrado con ese número de documento')
+      setLoading(false)
+      return
+    }
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,

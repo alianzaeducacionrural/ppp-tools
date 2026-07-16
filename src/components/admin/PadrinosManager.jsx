@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { CambiarPasswordModal } from './CambiarPasswordModal'
+import { eliminarCuentaAuth } from '../../lib/eliminarAuth'
 
 export function PadrinosManager() {
   const [padrinos, setPadrinos] = useState([])
@@ -96,15 +97,25 @@ export function PadrinosManager() {
   }
 
   async function handleEliminarPadrino(id) {
-    if (!confirm('¿Eliminar este padrino? Esta acción no se puede deshacer.')) return
+    if (!confirm('¿Eliminar este padrino? Se borrará también su cuenta de acceso. Esta acción no se puede deshacer.')) return
     setLoading(true)
+
+    // Guardar el user_id antes de borrar la fila (se necesita para eliminar la cuenta de acceso)
+    const { data: padrino } = await supabase.from('padrinos').select('user_id').eq('id', id).single()
+
     const { error } = await supabase.from('padrinos').delete().eq('id', id)
     if (error) {
       toast.error('Error al eliminar padrino: ' + error.message)
-    } else {
-      toast.success('Padrino eliminado')
-      await cargarPadrinos()
+      setLoading(false)
+      return
     }
+
+    // Sin esto la cuenta quedaría en Auth y no se podría volver a crear con el mismo correo
+    const { ok, error: authError } = await eliminarCuentaAuth(padrino?.user_id)
+    if (ok) toast.success('Padrino eliminado')
+    else toast.error('Datos borrados, pero la cuenta de acceso quedó activa: ' + authError)
+
+    await cargarPadrinos()
     setLoading(false)
   }
 

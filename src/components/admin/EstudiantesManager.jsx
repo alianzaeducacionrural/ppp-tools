@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { CambiarPasswordModal } from './CambiarPasswordModal'
+import { eliminarCuentaAuth } from '../../lib/eliminarAuth'
 
 const SELECT_CLS = 'px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] bg-white disabled:opacity-50 disabled:cursor-not-allowed w-full'
 
@@ -75,29 +76,41 @@ export function EstudiantesManager() {
   }
 
   async function handleDelete(id) {
-    if (confirm('¿Eliminar este estudiante? Se borrarán sus evidencias, insignias y todos sus datos.')) {
-      // Obtener IDs de evidencias del estudiante para borrar archivos
-      const { data: evidencias } = await supabase
-        .from('evidencias')
-        .select('id')
-        .eq('estudiante_id', id)
+    if (!confirm('¿Eliminar este estudiante? Se borrarán sus evidencias, insignias, su cuenta de acceso y todos sus datos.')) return
 
-      if (evidencias?.length) {
-        const evidenciaIds = evidencias.map(e => e.id)
-        await supabase.from('evidencias_archivos').delete().in('evidencia_id', evidenciaIds)
-        await supabase.from('evidencias').delete().in('id', evidenciaIds)
-      }
+    // Guardar el user_id antes de borrar la fila (se necesita para eliminar la cuenta de acceso)
+    const { data: estudiante } = await supabase
+      .from('estudiantes')
+      .select('user_id')
+      .eq('id', id)
+      .single()
 
-      await supabase.from('insignias_obtenidas').delete().eq('estudiante_id', id)
+    // Obtener IDs de evidencias del estudiante para borrar archivos
+    const { data: evidencias } = await supabase
+      .from('evidencias')
+      .select('id')
+      .eq('estudiante_id', id)
 
-      const { error } = await supabase.from('estudiantes').delete().eq('id', id)
-      if (error) {
-        toast.error('Error al eliminar: ' + error.message)
-      } else {
-        toast.success('Estudiante eliminado')
-        cargarEstudiantes()
-      }
+    if (evidencias?.length) {
+      const evidenciaIds = evidencias.map(e => e.id)
+      await supabase.from('evidencias_archivos').delete().in('evidencia_id', evidenciaIds)
+      await supabase.from('evidencias').delete().in('id', evidenciaIds)
     }
+
+    await supabase.from('insignias_obtenidas').delete().eq('estudiante_id', id)
+
+    const { error } = await supabase.from('estudiantes').delete().eq('id', id)
+    if (error) {
+      toast.error('Error al eliminar: ' + error.message)
+      return
+    }
+
+    // Sin esto la cuenta quedaría en Auth y la persona no podría volver a registrarse
+    const { ok, error: authError } = await eliminarCuentaAuth(estudiante?.user_id)
+    if (ok) toast.success('Estudiante eliminado')
+    else toast.error('Datos borrados, pero la cuenta de acceso quedó activa: ' + authError)
+
+    cargarEstudiantes()
   }
 
   const hayFiltros = filtros.municipio_id || filtros.institucion_id || filtros.grado || filtros.tipo_proyecto

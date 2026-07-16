@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { CambiarPasswordModal } from './CambiarPasswordModal'
+import { eliminarCuentaAuth } from '../../lib/eliminarAuth'
 
 const SELECT_CLS = 'px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] bg-white disabled:opacity-50 disabled:cursor-not-allowed w-full'
 
@@ -72,7 +73,10 @@ export function DocentesManager() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('¿Eliminar este docente? Se borrarán todos sus proyectos dirigidos (costos, utilidades, archivos).')) return
+    if (!confirm('¿Eliminar este docente? Se borrarán todos sus proyectos dirigidos (costos, utilidades, archivos) y su cuenta de acceso.')) return
+
+    // Guardar el user_id antes de borrar la fila (se necesita para eliminar la cuenta de acceso)
+    const { data: docente } = await supabase.from('docentes').select('user_id').eq('id', id).single()
 
     const { data: proyectos } = await supabase.from('proyectos_dirigidos').select('id').eq('docente_id', id)
     if (proyectos?.length) {
@@ -86,10 +90,15 @@ export function DocentesManager() {
     const { error } = await supabase.from('docentes').delete().eq('id', id)
     if (error) {
       toast.error('Error al eliminar: ' + error.message)
-    } else {
-      toast.success('Docente eliminado')
-      cargarDocentes()
+      return
     }
+
+    // Sin esto la cuenta quedaría en Auth y la persona no podría volver a registrarse
+    const { ok, error: authError } = await eliminarCuentaAuth(docente?.user_id)
+    if (ok) toast.success('Docente eliminado')
+    else toast.error('Datos borrados, pero la cuenta de acceso quedó activa: ' + authError)
+
+    cargarDocentes()
   }
 
   const docentesFiltrados = filtros.busqueda.trim()
