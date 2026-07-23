@@ -6,19 +6,10 @@ const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl f
 const ROW_INPUT = 'px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition'
 const LABEL_CLS = 'block text-[#4a3222] font-medium mb-1 text-sm'
 const SECTION_TITLE_CLS = 'text-[10px] font-bold uppercase tracking-widest text-[#a68a64]'
-const DURACION_MAX_VIDEO = 6 * 60 // segundos
+const MAX_ARCHIVO_BYTES = 200 * 1024 * 1024 // 200 MB (límite del bucket, aplica a las fotos)
 
-function leerDuracionVideo(file) {
-  return new Promise((resolve) => {
-    const videoEl = document.createElement('video')
-    videoEl.preload = 'metadata'
-    videoEl.onloadedmetadata = () => {
-      URL.revokeObjectURL(videoEl.src)
-      resolve(videoEl.duration)
-    }
-    videoEl.onerror = () => resolve(0)
-    videoEl.src = URL.createObjectURL(file)
-  })
+function formatearMB(bytes) {
+  return (bytes / (1024 * 1024)).toFixed(0)
 }
 
 function ValorInput({ value, onChange }) {
@@ -101,11 +92,17 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
       : [{ _key: crypto.randomUUID(), tipo: 'economica', concepto: '', valor: '' }]
   )
 
-  const [archivosExistentes, setArchivosExistentes] = useState(proyectoExistente?.archivos || [])
+  // El video es un enlace externo; las fotos sí se suben a la plataforma
+  const videoExistente = (proyectoExistente?.archivos || []).find(a => a.tipo_archivo === 'video')
+  const videoArchivoId = videoExistente?.id
+
+  const [archivosExistentes, setArchivosExistentes] = useState(
+    (proyectoExistente?.archivos || []).filter(a => a.tipo_archivo === 'imagen')
+  )
   const [eliminados, setEliminados] = useState([])
-  const [videoNuevo, setVideoNuevo] = useState(null)
+  const [videoUrl, setVideoUrl] = useState(videoExistente?.url || '')
   const [fotosNuevas, setFotosNuevas] = useState([])
-  const videoInputRef = useRef(null)
+  const [mostrarRecomendaciones, setMostrarRecomendaciones] = useState(false)
   const fotosInputRef = useRef(null)
 
   function handleChange(e) {
@@ -137,22 +134,17 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
     .filter(u => u.tipo === 'economica')
     .reduce((s, u) => s + (parseFloat(u.valor) || 0), 0)
 
-  async function handleSeleccionarVideo(e) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    const duracion = await leerDuracionVideo(file)
-    if (duracion > DURACION_MAX_VIDEO) {
-      toast.error(`El video dura ${Math.ceil(duracion / 60)} min. El máximo permitido es 6 minutos.`)
-      return
-    }
-    setVideoNuevo(file)
-  }
-
   function handleSeleccionarFotos(e) {
     const files = Array.from(e.target.files || [])
     e.target.value = ''
-    setFotosNuevas(prev => [...prev, ...files])
+    const validas = files.filter(f => {
+      if (f.size > MAX_ARCHIVO_BYTES) {
+        toast.error(`La foto "${f.name}" pesa ${formatearMB(f.size)} MB y supera el máximo de 200 MB.`)
+        return false
+      }
+      return true
+    })
+    if (validas.length) setFotosNuevas(prev => [...prev, ...validas])
   }
 
   function quitarFotoNueva(idx) {
@@ -173,17 +165,20 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
       .upload(fileName, file, { upsert: true })
     if (uploadError) {
       console.error('Error subiendo archivo:', uploadError)
-      toast.error('Error al subir ' + file.name)
-      return
+      throw new Error(`No se pudo subir "${file.name}". Verifica que no supere 200 MB e inténtalo de nuevo.`)
     }
     const { data: urlData } = supabase.storage.from('proyectos-dirigidos').getPublicUrl(fileName)
-    await supabase.from('proyecto_dirigido_archivos').insert({
+    const { error: insertError } = await supabase.from('proyecto_dirigido_archivos').insert({
       proyecto_dirigido_id: idProyecto,
       tipo_archivo: tipo,
       url: urlData.publicUrl,
       nombre_original: file.name,
       tamanio_bytes: file.size
     })
+    if (insertError) {
+      console.error('Error registrando archivo:', insertError)
+      throw new Error(`No se pudo registrar "${file.name}".`)
+    }
   }
 
   async function handleSubmit(e) {
@@ -193,9 +188,12 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
       toast.error('El título del proyecto es obligatorio')
       return
     }
-    const yaHayVideo = archivosExistentes.some(a => a.tipo_archivo === 'video')
-    if (!yaHayVideo && !videoNuevo) {
-      toast.error('Debes subir el video de tu clase (máximo 6 minutos)')
+    if (!videoUrl.trim()) {
+      toast.error('Debes pegar el enlace del video de tu clase')
+      return
+    }
+    if (!/^https?:\/\//i.test(videoUrl.trim())) {
+      toast.error('El enlace del video debe empezar con http:// o https://')
       return
     }
 
@@ -273,14 +271,28 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
         )
       }
 
-      if (videoNuevo) await subirArchivo(videoNuevo, 'video', idProyecto)
+      // El video es un enlace: se guarda/actualiza la URL, no se sube archivo
+      const urlLimpia = videoUrl.trim()
+      if (videoArchivoId) {
+        await supabase.from('proyecto_dirigido_archivos')
+          .update({ url: urlLimpia, nombre_original: 'Enlace del video' })
+          .eq('id', videoArchivoId)
+      } else {
+        await supabase.from('proyecto_dirigido_archivos').insert({
+          proyecto_dirigido_id: idProyecto,
+          tipo_archivo: 'video',
+          url: urlLimpia,
+          nombre_original: 'Enlace del video'
+        })
+      }
+
       for (const foto of fotosNuevas) await subirArchivo(foto, 'imagen', idProyecto)
 
       toast.success('¡Proyecto dirigido enviado! Espera la revisión del padrino')
       onGuardado()
     } catch (error) {
       console.error('Error guardando proyecto dirigido:', error)
-      toast.error('Error al guardar el proyecto. Inténtalo de nuevo.')
+      toast.error(error.message || 'Error al guardar el proyecto. Inténtalo de nuevo.')
     } finally {
       setLoading(false)
     }
@@ -472,46 +484,48 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
           <div className="flex-1 h-px bg-[#e8dcca]" />
         </div>
 
-        {archivosExistentes.length > 0 && (
-          <div className="mb-3">
-            <p className="text-xs font-semibold text-[#4a3222] mb-1.5 uppercase tracking-wide">🗂️ Archivos actuales</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {archivosExistentes.map(archivo => (
-                <div key={archivo.id} className="relative group rounded-xl overflow-hidden border border-[#e8dcca] bg-white shadow-sm">
-                  {archivo.tipo_archivo === 'imagen' ? (
-                    <img src={archivo.url} alt={archivo.nombre_original || 'Foto'} className="w-full h-20 sm:h-24 object-cover" />
-                  ) : (
-                    <div className="w-full h-20 sm:h-24 flex flex-col items-center justify-center bg-[#f5efe6]">
-                      <span className="text-2xl">🎥</span>
-                      <span className="text-[10px] text-[#a68a64] mt-1">Video</span>
-                    </div>
-                  )}
-                  <div className="px-2 py-1.5">
-                    <p className="text-[10px] text-[#4a3222] font-medium truncate" title={archivo.nombre_original}>{archivo.nombre_original || 'Archivo'}</p>
-                  </div>
-                  <button type="button" onClick={() => quitarArchivoExistente(archivo)}
-                    className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-all shadow-md">
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div className="space-y-3">
           <div>
-            <label className={LABEL_CLS}>Video de tu clase (máximo 6 minutos) {archivosExistentes.some(a => a.tipo_archivo === 'video') ? '' : '*'}</label>
-            <input ref={videoInputRef} type="file" accept="video/*" onChange={handleSeleccionarVideo} className="hidden" />
-            <button type="button" onClick={() => videoInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-[#d4c4a8] hover:border-[#6b4c3a] rounded-xl p-4 text-center transition bg-white hover:bg-[#faf7f3]">
-              {videoNuevo ? (
-                <span className="text-sm text-[#4a3222] font-medium">🎥 {videoNuevo.name}</span>
-              ) : (
-                <span className="text-sm text-[#6b4c3a]">Haz clic para seleccionar el video (máx. 6 min)</span>
-              )}
-            </button>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <label className={LABEL_CLS + ' mb-0'}>Enlace del video de tu clase *</label>
+              <button
+                type="button"
+                onClick={() => setMostrarRecomendaciones(true)}
+                className="flex items-center gap-1 text-xs font-semibold text-[#6b4c3a] hover:text-[#4a3222] bg-[#f5efe6] hover:bg-[#e8dcca] px-2.5 py-1 rounded-full transition flex-shrink-0"
+              >
+                💡 Recomendaciones
+              </button>
+            </div>
+            <input
+              type="url"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              className={INPUT_CLS}
+              placeholder="https://youtu.be/... o enlace de Google Drive"
+              required
+            />
+            <p className="text-xs text-[#a68a64] mt-1">
+              Sube tu video a YouTube, Google Drive u otra plataforma y pega aquí el enlace (máximo 6 minutos).
+              Asegúrate de que el enlace tenga permiso de visualización para que el padrino pueda verlo.
+            </p>
           </div>
+
+          {archivosExistentes.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-[#4a3222] mb-1.5 uppercase tracking-wide">🗂️ Fotos actuales</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {archivosExistentes.map(archivo => (
+                  <div key={archivo.id} className="relative group rounded-xl overflow-hidden border border-[#e8dcca] bg-white shadow-sm">
+                    <img src={archivo.url} alt={archivo.nombre_original || 'Foto'} className="w-full h-20 sm:h-24 object-cover" />
+                    <button type="button" onClick={() => quitarArchivoExistente(archivo)}
+                      className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-all shadow-md">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className={LABEL_CLS}>Evidencias fotográficas</label>
@@ -547,6 +561,120 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
           Cancelar
         </button>
       </div>
+
+      {mostrarRecomendaciones && (
+        <RecomendacionesVideoModal onClose={() => setMostrarRecomendaciones(false)} />
+      )}
     </form>
+  )
+}
+
+function RecomendacionesVideoModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Encabezado */}
+        <div className="bg-gradient-to-br from-[#2c1810] via-[#4a3222] to-[#7a5c48] p-5 text-white sticky top-0 rounded-t-2xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🎥</span>
+              <div>
+                <h3 className="font-bold text-base leading-tight">Recomendaciones para el video</h3>
+                <p className="text-xs text-[#d4c4a8] mt-0.5">Maestro PPP · Ten en cuenta lo siguiente</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-sm font-bold transition flex-shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-5 text-sm text-[#4a3222]">
+          {/* Duración */}
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl p-3">
+            <span className="text-lg">⏱️</span>
+            <p className="text-[#6b4c3a]"><strong>Duración máxima: 6 minutos.</strong> Graba una clase tuya de Escuela y Café o Escuela y Seguridad Alimentaria, según el proyecto por el que te postulaste.</p>
+          </div>
+
+          {/* Qué decir al inicio */}
+          <div>
+            <p className="font-bold text-[#4a3222] mb-2 flex items-center gap-2"><span>🗣️</span> En la parte inicial preséntate y cuéntanos:</p>
+            <ul className="space-y-1.5 pl-1">
+              {[
+                'Presentación personal e institucional.',
+                'Las razones por las cuales decidiste desarrollar este proyecto dirigido con tus estudiantes.',
+                'Brevemente tu trayectoria formativa y experiencia profesional.',
+                'Qué has aprendido con el desarrollo de este proyecto dirigido.',
+              ].map((txt, i) => (
+                <li key={i} className="flex items-start gap-2 text-[#6b4c3a]">
+                  <span className="text-[#a68a64] mt-0.5">•</span>
+                  <span>{txt}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Qué mostrar */}
+          <div>
+            <p className="font-bold text-[#4a3222] mb-2 flex items-center gap-2"><span>📚</span> Durante la clase se debe evidenciar:</p>
+            <ul className="space-y-1.5 pl-1">
+              {[
+                'El desarrollo de los módulos.',
+                'El uso del libro de registros.',
+                'La implementación del modelo pedagógico Escuela Nueva.',
+              ].map((txt, i) => (
+                <li key={i} className="flex items-start gap-2 text-[#6b4c3a]">
+                  <span className="text-[#a68a64] mt-0.5">•</span>
+                  <span>{txt}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Cómo compartir el enlace */}
+          <div>
+            <p className="font-bold text-[#4a3222] mb-2 flex items-center gap-2"><span>🔗</span> Cómo compartir el enlace:</p>
+            <ul className="space-y-1.5 pl-1">
+              {[
+                'Sube el video a YouTube, Google Drive u otra plataforma.',
+                'En YouTube, márcalo como "No listado" o "Público" (no privado).',
+                'En Google Drive, activa "Cualquier persona con el enlace" con permiso de lector.',
+                'Verifica el enlace en una ventana de incógnito antes de enviarlo, para confirmar que se puede ver.',
+              ].map((txt, i) => (
+                <li key={i} className="flex items-start gap-2 text-[#6b4c3a]">
+                  <span className="text-emerald-500 mt-0.5">✓</span>
+                  <span>{txt}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Consejos técnicos */}
+          <div className="bg-[#f5efe6] border border-[#e8dcca] rounded-xl p-3">
+            <p className="font-bold text-[#4a3222] mb-1.5 flex items-center gap-2"><span>💡</span> Consejos para que se vea bien:</p>
+            <ul className="space-y-1 text-xs text-[#6b4c3a]">
+              <li>• Graba en un lugar con buena iluminación y poco ruido.</li>
+              <li>• Usa la cámara en posición horizontal.</li>
+              <li>• Habla claro y a un ritmo pausado.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-[#f0e8dc] sticky bottom-0 bg-white rounded-b-2xl">
+          <button
+            onClick={onClose}
+            className="w-full bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-2.5 rounded-xl font-semibold hover:shadow-lg transition-all text-sm"
+          >
+            Entendido
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

@@ -378,7 +378,20 @@ function TarjetaProyectoDirigido({ proyecto, onActualizar }) {
         <div className="bg-[#faf7f3] rounded-xl p-4 border border-[#f0e8dc]">
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-2">🎥 Video y evidencias</p>
           {videos.map((video, idx) => (
-            <video key={idx} src={video.url} controls className="rounded-xl max-h-64 w-full mb-2" />
+            <a
+              key={idx}
+              href={video.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-white border border-[#e8dcca] hover:border-[#6b4c3a] rounded-xl px-4 py-3 mb-2 transition group"
+            >
+              <span className="text-xl">▶️</span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-semibold text-[#4a3222]">Ver video de la clase</span>
+                <span className="block text-[10px] text-[#a68a64] truncate">{video.url}</span>
+              </span>
+              <span className="text-[#a68a64] group-hover:text-[#6b4c3a] text-xs flex-shrink-0">Abrir ↗</span>
+            </a>
           ))}
           {imagenes.length > 0 && <ImageViewer images={imagenes} />}
           {videos.length === 0 && imagenes.length === 0 && (
