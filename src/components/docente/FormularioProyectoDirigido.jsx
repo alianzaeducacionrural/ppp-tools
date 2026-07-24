@@ -2,16 +2,12 @@ import { useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { RecomendacionesVideoModal } from '../comunes/RecomendacionesVideoModal'
+import { procesarImagenes } from '../../lib/imagenes'
 
 const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition'
 const ROW_INPUT = 'px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition'
 const LABEL_CLS = 'block text-[#4a3222] font-medium mb-1 text-sm'
 const SECTION_TITLE_CLS = 'text-[10px] font-bold uppercase tracking-widest text-[#a68a64]'
-const MAX_ARCHIVO_BYTES = 200 * 1024 * 1024 // 200 MB (límite del bucket, aplica a las fotos)
-
-function formatearMB(bytes) {
-  return (bytes / (1024 * 1024)).toFixed(0)
-}
 
 function ValorInput({ value, onChange }) {
   return (
@@ -62,7 +58,17 @@ function FilaRenglon({ concepto, valor, onConceptoChange, onValorChange, onQuita
 
 export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuardado, onCancelar }) {
   const [loading, setLoading] = useState(false)
+  const [progreso, setProgreso] = useState('')
   const proyectoId = proyectoExistente?.id
+
+  // Si un envío falla a mitad (por ejemplo al subir una foto), el proyecto ya
+  // quedó creado. Guardamos su id para que el reintento lo actualice en vez de
+  // crear otro: así aparecieron 8 copias del mismo proyecto.
+  const proyectoCreadoRef = useRef(proyectoId || null)
+  // El estado no se actualiza a tiempo si se toca "Enviar" dos veces seguidas.
+  const enviandoRef = useRef(false)
+  // Cuántas fotos alcanzaron a subirse, para no repetirlas al reintentar.
+  const fotosSubidasRef = useRef(0)
 
   const [formData, setFormData] = useState({
     titulo: proyectoExistente?.titulo || '',
@@ -95,7 +101,7 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
 
   // El video es un enlace externo; las fotos sí se suben a la plataforma
   const videoExistente = (proyectoExistente?.archivos || []).find(a => a.tipo_archivo === 'video')
-  const videoArchivoId = videoExistente?.id
+  const videoArchivoRef = useRef(videoExistente?.id || null)
 
   const [archivosExistentes, setArchivosExistentes] = useState(
     (proyectoExistente?.archivos || []).filter(a => a.tipo_archivo === 'imagen')
@@ -103,6 +109,7 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
   const [eliminados, setEliminados] = useState([])
   const [videoUrl, setVideoUrl] = useState(videoExistente?.url || '')
   const [fotosNuevas, setFotosNuevas] = useState([])
+  const [procesandoFotos, setProcesandoFotos] = useState(false)
   const [mostrarRecomendaciones, setMostrarRecomendaciones] = useState(false)
   const fotosInputRef = useRef(null)
 
@@ -135,17 +142,20 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
     .filter(u => u.tipo === 'economica')
     .reduce((s, u) => s + (parseFloat(u.valor) || 0), 0)
 
-  function handleSeleccionarFotos(e) {
+  async function handleSeleccionarFotos(e) {
     const files = Array.from(e.target.files || [])
     e.target.value = ''
-    const validas = files.filter(f => {
-      if (f.size > MAX_ARCHIVO_BYTES) {
-        toast.error(`La foto "${f.name}" pesa ${formatearMB(f.size)} MB y supera el máximo de 200 MB.`)
-        return false
-      }
-      return true
-    })
-    if (validas.length) setFotosNuevas(prev => [...prev, ...validas])
+    if (!files.length) return
+
+    setProcesandoFotos(true)
+    // Convierte HEIC a JPG y reduce el peso, igual que en las evidencias de
+    // los estudiantes: sin esto las fotos de iPhone no se ven y las de 4 MB
+    // tardan una eternidad con señal rural.
+    const { ok, errores } = await procesarImagenes(files)
+    setProcesandoFotos(false)
+
+    errores.forEach(msg => toast.error(msg, { duration: 7000 }))
+    if (ok.length) setFotosNuevas(prev => [...prev, ...ok])
   }
 
   function quitarFotoNueva(idx) {
@@ -166,7 +176,7 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
       .upload(fileName, file, { upsert: true })
     if (uploadError) {
       console.error('Error subiendo archivo:', uploadError)
-      throw new Error(`No se pudo subir "${file.name}". Verifica que no supere 200 MB e inténtalo de nuevo.`)
+      throw new Error(`No se pudo subir "${file.name}". Revisa tu conexión e inténtalo de nuevo.`)
     }
     const { data: urlData } = supabase.storage.from('proyectos-dirigidos').getPublicUrl(fileName)
     const { error: insertError } = await supabase.from('proyecto_dirigido_archivos').insert({
@@ -184,9 +194,14 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (enviandoRef.current) return
 
     if (!formData.titulo.trim()) {
       toast.error('El título del proyecto es obligatorio')
+      return
+    }
+    if (procesandoFotos) {
+      toast.error('Espera a que terminen de prepararse las fotos.')
       return
     }
     if (!videoUrl.trim()) {
@@ -198,6 +213,7 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
       return
     }
 
+    enviandoRef.current = true
     setLoading(true)
     try {
       const proyectoData = {
@@ -219,8 +235,12 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
         justificacion: formData.justificacion
       }
 
-      let idProyecto = proyectoId
-      if (proyectoExistente) {
+      // proyectoCreadoRef cubre el reintento tras un fallo: el proyecto ya
+      // existe aunque el formulario siga abierto, así que se actualiza.
+      let idProyecto = proyectoCreadoRef.current
+      setProgreso('Guardando el proyecto...')
+
+      if (idProyecto) {
         // Si estaba rechazado y se reenvía, vuelve a quedar pendiente
         const { error } = await supabase
           .from('proyectos_dirigidos')
@@ -243,6 +263,8 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
         const { data, error } = await supabase.from('proyectos_dirigidos').insert(proyectoData).select()
         if (error) throw error
         idProyecto = data?.[0]?.id
+        // A partir de aquí el proyecto existe: cualquier reintento lo actualiza.
+        proyectoCreadoRef.current = idProyecto
       }
 
       if (!idProyecto) throw new Error('No se pudo obtener el ID del proyecto')
@@ -274,27 +296,41 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
 
       // El video es un enlace: se guarda/actualiza la URL, no se sube archivo
       const urlLimpia = videoUrl.trim()
-      if (videoArchivoId) {
+      if (videoArchivoRef.current) {
         await supabase.from('proyecto_dirigido_archivos')
           .update({ url: urlLimpia, nombre_original: 'Enlace del video' })
-          .eq('id', videoArchivoId)
+          .eq('id', videoArchivoRef.current)
       } else {
-        await supabase.from('proyecto_dirigido_archivos').insert({
-          proyecto_dirigido_id: idProyecto,
-          tipo_archivo: 'video',
-          url: urlLimpia,
-          nombre_original: 'Enlace del video'
-        })
+        const { data: filaVideo, error: videoError } = await supabase
+          .from('proyecto_dirigido_archivos')
+          .insert({
+            proyecto_dirigido_id: idProyecto,
+            tipo_archivo: 'video',
+            url: urlLimpia,
+            nombre_original: 'Enlace del video'
+          })
+          .select('id')
+        if (videoError) throw new Error('No se pudo guardar el enlace del video. Inténtalo de nuevo.')
+        // Si el envío falla más adelante, el reintento actualiza esta fila
+        // en vez de crear un segundo enlace.
+        videoArchivoRef.current = filaVideo?.[0]?.id || null
       }
 
-      for (const foto of fotosNuevas) await subirArchivo(foto, 'imagen', idProyecto)
+      // Las fotos que ya se subieron en un intento anterior no se repiten.
+      for (let i = fotosSubidasRef.current; i < fotosNuevas.length; i++) {
+        setProgreso(`Subiendo foto ${i + 1} de ${fotosNuevas.length}...`)
+        await subirArchivo(fotosNuevas[i], 'imagen', idProyecto)
+        fotosSubidasRef.current = i + 1
+      }
 
       toast.success('¡Proyecto dirigido enviado! Espera la revisión del padrino')
       onGuardado()
     } catch (error) {
       console.error('Error guardando proyecto dirigido:', error)
-      toast.error(error.message || 'Error al guardar el proyecto. Inténtalo de nuevo.')
+      toast.error(error.message || 'Error al guardar el proyecto. Inténtalo de nuevo.', { duration: 7000 })
     } finally {
+      setProgreso('')
+      enviandoRef.current = false
       setLoading(false)
     }
   }
@@ -531,9 +567,16 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
           <div>
             <label className={LABEL_CLS}>Evidencias fotográficas</label>
             <input ref={fotosInputRef} type="file" accept="image/*" multiple onChange={handleSeleccionarFotos} className="hidden" />
-            <button type="button" onClick={() => fotosInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-[#d4c4a8] hover:border-[#6b4c3a] rounded-xl p-4 text-center transition bg-white hover:bg-[#faf7f3]">
-              <span className="text-sm text-[#6b4c3a]">Haz clic para agregar fotos</span>
+            <button type="button" onClick={() => fotosInputRef.current?.click()} disabled={procesandoFotos}
+              className="w-full border-2 border-dashed border-[#d4c4a8] hover:border-[#6b4c3a] disabled:cursor-wait rounded-xl p-4 text-center transition bg-white hover:bg-[#faf7f3]">
+              <span className="text-sm text-[#6b4c3a]">
+                {procesandoFotos ? '⏳ Preparando tus fotos...' : 'Haz clic para agregar fotos'}
+              </span>
+              {!procesandoFotos && (
+                <span className="block text-xs text-[#a68a64] mt-1">
+                  Se optimizan solas para que suban rápido, aunque tengas poca señal
+                </span>
+              )}
             </button>
             {fotosNuevas.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
@@ -553,12 +596,14 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={loading}
+        <button type="submit" disabled={loading || procesandoFotos}
           className="flex-1 bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-2.5 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 text-sm">
-          {loading ? 'Guardando...' : proyectoExistente ? 'Guardar y reenviar' : 'Enviar proyecto dirigido'}
+          {loading
+            ? (progreso || 'Guardando...')
+            : proyectoExistente ? 'Guardar y reenviar' : 'Enviar proyecto dirigido'}
         </button>
         <button type="button" onClick={onCancelar} disabled={loading}
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold border border-[#e8dcca] text-[#6b4c3a] hover:bg-[#faf7f3] transition">
+          className="px-5 py-2.5 rounded-xl text-sm font-semibold border border-[#e8dcca] text-[#6b4c3a] hover:bg-[#faf7f3] disabled:opacity-50 transition">
           Cancelar
         </button>
       </div>
