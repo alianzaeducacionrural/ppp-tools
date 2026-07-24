@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
+import { RecomendacionesVideoModal } from '../comunes/RecomendacionesVideoModal'
 
 const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition'
 const ROW_INPUT = 'px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition'
@@ -563,118 +564,8 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
       </div>
 
       {mostrarRecomendaciones && (
-        <RecomendacionesVideoModal onClose={() => setMostrarRecomendaciones(false)} />
+        <RecomendacionesVideoModal onClose={() => setMostrarRecomendaciones(false)} variante="docente" />
       )}
     </form>
-  )
-}
-
-function RecomendacionesVideoModal({ onClose }) {
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Encabezado */}
-        <div className="bg-gradient-to-br from-[#2c1810] via-[#4a3222] to-[#7a5c48] p-5 text-white sticky top-0 rounded-t-2xl">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🎥</span>
-              <div>
-                <h3 className="font-bold text-base leading-tight">Recomendaciones para el video</h3>
-                <p className="text-xs text-[#d4c4a8] mt-0.5">Maestro PPP · Ten en cuenta lo siguiente</p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-sm font-bold transition flex-shrink-0"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
-        <div className="p-5 space-y-5 text-sm text-[#4a3222]">
-          {/* Duración */}
-          <div className="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl p-3">
-            <span className="text-lg">⏱️</span>
-            <p className="text-[#6b4c3a]"><strong>Duración máxima: 6 minutos.</strong> Graba una clase tuya de Escuela y Café o Escuela y Seguridad Alimentaria, según el proyecto por el que te postulaste.</p>
-          </div>
-
-          {/* Qué decir al inicio */}
-          <div>
-            <p className="font-bold text-[#4a3222] mb-2 flex items-center gap-2"><span>🗣️</span> En la parte inicial preséntate y cuéntanos:</p>
-            <ul className="space-y-1.5 pl-1">
-              {[
-                'Presentación personal e institucional.',
-                'Las razones por las cuales decidiste desarrollar este proyecto dirigido con tus estudiantes.',
-                'Brevemente tu trayectoria formativa y experiencia profesional.',
-                'Qué has aprendido con el desarrollo de este proyecto dirigido.',
-              ].map((txt, i) => (
-                <li key={i} className="flex items-start gap-2 text-[#6b4c3a]">
-                  <span className="text-[#a68a64] mt-0.5">•</span>
-                  <span>{txt}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Qué mostrar */}
-          <div>
-            <p className="font-bold text-[#4a3222] mb-2 flex items-center gap-2"><span>📚</span> Durante la clase se debe evidenciar:</p>
-            <ul className="space-y-1.5 pl-1">
-              {[
-                'El desarrollo de los módulos.',
-                'El uso del libro de registros.',
-                'La implementación del modelo pedagógico Escuela Nueva.',
-              ].map((txt, i) => (
-                <li key={i} className="flex items-start gap-2 text-[#6b4c3a]">
-                  <span className="text-[#a68a64] mt-0.5">•</span>
-                  <span>{txt}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Cómo compartir el enlace */}
-          <div>
-            <p className="font-bold text-[#4a3222] mb-2 flex items-center gap-2"><span>🔗</span> Cómo compartir el enlace:</p>
-            <ul className="space-y-1.5 pl-1">
-              {[
-                'Sube el video a YouTube, Google Drive u otra plataforma.',
-                'En YouTube, márcalo como "No listado" o "Público" (no privado).',
-                'En Google Drive, activa "Cualquier persona con el enlace" con permiso de lector.',
-                'Verifica el enlace en una ventana de incógnito antes de enviarlo, para confirmar que se puede ver.',
-              ].map((txt, i) => (
-                <li key={i} className="flex items-start gap-2 text-[#6b4c3a]">
-                  <span className="text-emerald-500 mt-0.5">✓</span>
-                  <span>{txt}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Consejos técnicos */}
-          <div className="bg-[#f5efe6] border border-[#e8dcca] rounded-xl p-3">
-            <p className="font-bold text-[#4a3222] mb-1.5 flex items-center gap-2"><span>💡</span> Consejos para que se vea bien:</p>
-            <ul className="space-y-1 text-xs text-[#6b4c3a]">
-              <li>• Graba en un lugar con buena iluminación y poco ruido.</li>
-              <li>• Usa la cámara en posición horizontal.</li>
-              <li>• Habla claro y a un ritmo pausado.</li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-[#f0e8dc] sticky bottom-0 bg-white rounded-b-2xl">
-          <button
-            onClick={onClose}
-            className="w-full bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-2.5 rounded-xl font-semibold hover:shadow-lg transition-all text-sm"
-          >
-            Entendido
-          </button>
-        </div>
-      </div>
-    </div>
   )
 }

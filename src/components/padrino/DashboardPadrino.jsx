@@ -11,6 +11,7 @@ import { PerfilPadrino } from './PerfilPadrino'
 import { AyudaPadrino } from './AyudaPadrino'
 import { RankingParticipantes } from '../comunes/RankingParticipantes'
 import { ProyectosDirigidosPadrino } from './ProyectosDirigidosPadrino'
+import { esEnlaceExterno } from '../../lib/imagenes'
 
 // ============================================
 // COMPONENTE PRINCIPAL DE EVIDENCIAS (Dashboard)
@@ -40,6 +41,24 @@ function DashboardEvidencias({ onRefresh }) {
     if (data) setMunicipios(data)
   }
 
+  // Los totales son globales, no del filtro activo: antes se calculaban sobre la
+  // consulta ya filtrada por estado, así que "Aprobadas" siempre marcaba 0
+  // mientras se revisaban las pendientes.
+  async function cargarStats() {
+    const contar = (estado) =>
+      supabase.from('evidencias').select('id', { count: 'exact', head: true }).eq('estado', estado)
+
+    const [pendientes, aprobadas, rechazadas] = await Promise.all([
+      contar('pendiente'), contar('aprobado'), contar('rechazado')
+    ])
+
+    setStats({
+      pendientes: pendientes.count || 0,
+      aprobadas: aprobadas.count || 0,
+      rechazadas: rechazadas.count || 0
+    })
+  }
+
   async function cargarEvidencias() {
     setLoading(true)
     
@@ -65,7 +84,7 @@ function DashboardEvidencias({ onRefresh }) {
 
       if (!evidenciasData || evidenciasData.length === 0) {
         setEvidencias([])
-        setStats({ pendientes: 0, aprobadas: 0, rechazadas: 0 })
+        await cargarStats()
         setLoading(false)
         return
       }
@@ -87,7 +106,7 @@ function DashboardEvidencias({ onRefresh }) {
           .in('id', estudianteIds),
         supabase
           .from('retos')
-          .select('id, texto, tipo_evidencia, instruccion_evidencia, nivel_id')
+          .select('id, texto, tipo_evidencia, instruccion_evidencia, nivel_id, orden')
           .in('id', retoIds),
         supabase
           .from('evidencias_archivos')
@@ -139,14 +158,8 @@ function DashboardEvidencias({ onRefresh }) {
       }
       
       setEvidencias(filtradas)
-      
-      // Calcular estadísticas
-      setStats({
-        pendientes: evidenciasData.filter(e => e.estado === 'pendiente').length,
-        aprobadas: evidenciasData.filter(e => e.estado === 'aprobado').length,
-        rechazadas: evidenciasData.filter(e => e.estado === 'rechazado').length
-      })
-      
+      await cargarStats()
+
     } catch (error) {
       console.error('Error:', error)
       toast.error('Error al cargar las evidencias')
@@ -400,7 +413,7 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
   }
 
   const imagenesEvidencia = evidencia.evidencias_archivos?.filter(a => a.tipo_archivo === 'imagen').map(a => a.url) || []
-  const videosEvidencia = evidencia.evidencias_archivos?.filter(a => a.tipo_archivo === 'video') || []
+  const videosEvidencia = evidencia.evidencias_archivos?.filter(a => a.tipo_archivo === 'video' || a.tipo_archivo === 'audio') || []
 
   const estadoStyle = {
     pendiente: { pill: 'bg-amber-50 text-amber-700 border border-amber-200',  bar: 'bg-amber-400' },
@@ -440,9 +453,19 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
       <div className="p-5 space-y-4">
         {/* Info del reto */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1">
-            Nivel {reto?.nivel?.numero_nivel} — {reto?.nivel?.nombre}
-          </p>
+          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+            <span className="px-2 py-0.5 rounded-full bg-[#f5efe6] border border-[#e8dcca] text-[10px] font-bold uppercase tracking-widest text-[#6b4c3a]">
+              Nivel {reto?.nivel?.numero_nivel ?? '?'}
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#a68a64]">
+              {reto?.nivel?.nombre}
+            </span>
+            {reto?.orden != null && (
+              <span className="px-2 py-0.5 rounded-full bg-[#6b4c3a] text-white text-[10px] font-bold uppercase tracking-widest">
+                Reto {reto.orden}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-[#4a3222] font-medium leading-snug">{reto?.texto}</p>
           {reto?.instruccion_evidencia && (
             <p className="text-xs text-[#6b4c3a] mt-1 italic leading-relaxed">
@@ -465,9 +488,28 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
           )}
           {videosEvidencia.length > 0 && (
             <div>
-              <p className="text-xs text-[#a68a64] mb-2">🎥 Videos</p>
-              {videosEvidencia.map((video, idx) => (
-                <video key={idx} src={video.url} controls className="rounded-xl max-h-48 w-full mb-2" />
+              <p className="text-xs text-[#a68a64] mb-2">
+                {videosEvidencia[0].tipo_archivo === 'audio' ? '🎵 Audio' : '🎥 Video'}
+              </p>
+              {videosEvidencia.map((video) => (
+                esEnlaceExterno(video.url) ? (
+                  <a
+                    key={video.id}
+                    href={video.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-white border border-[#e8dcca] hover:border-[#6b4c3a] rounded-xl px-3 py-2.5 mb-2 transition group"
+                  >
+                    <span className="text-lg flex-shrink-0">▶️</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-xs font-semibold text-[#4a3222]">Abrir el video en otra pestaña</span>
+                      <span className="block text-[10px] text-[#a68a64] truncate">{video.url}</span>
+                    </span>
+                    <span className="text-[#a68a64] group-hover:text-[#6b4c3a] flex-shrink-0">↗</span>
+                  </a>
+                ) : (
+                  <video key={video.id} src={video.url} controls className="rounded-xl max-h-48 w-full mb-2" />
+                )
               ))}
             </div>
           )}

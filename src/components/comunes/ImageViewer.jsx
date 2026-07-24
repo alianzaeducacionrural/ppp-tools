@@ -1,6 +1,27 @@
 import { useState } from 'react'
+import { esImagenNoVisible } from '../../lib/imagenes'
 
-export function ImageViewer({ images, onClose }) {
+/** Miniatura para una imagen que el navegador no puede mostrar (HEIC de iPhone). */
+function NoPrevisualizable({ url, motivo }) {
+  return (
+    <div className="w-24 h-24 rounded-lg border-2 border-[#e8dcca] bg-[#f5efe6] flex flex-col items-center justify-center text-[#a68a64] text-[10px] text-center px-1 gap-1">
+      <span className="text-lg">🖼️</span>
+      <span className="leading-tight">{motivo}</span>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        download
+        onClick={(e) => e.stopPropagation()}
+        className="text-[10px] font-semibold text-[#6b4c3a] hover:text-[#4a3222] underline"
+      >
+        Descargar
+      </a>
+    </div>
+  )
+}
+
+export function ImageViewer({ images }) {
   const [selectedImage, setSelectedImage] = useState(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [erroredUrls, setErroredUrls] = useState(new Set())
@@ -33,11 +54,10 @@ export function ImageViewer({ images, onClose }) {
       <div className="flex gap-2 flex-wrap mt-2">
         {images.map((img, idx) => (
           <div key={idx} className="relative group">
-            {erroredUrls.has(img) ? (
-              <div className="w-24 h-24 rounded-lg border-2 border-[#e8dcca] bg-[#f5efe6] flex flex-col items-center justify-center text-[#a68a64] text-xs text-center px-1">
-                <span className="text-lg mb-1">🖼️</span>
-                <span>No disponible</span>
-              </div>
+            {esImagenNoVisible(img) ? (
+              <NoPrevisualizable url={img} motivo="Formato HEIC" />
+            ) : erroredUrls.has(img) ? (
+              <NoPrevisualizable url={img} motivo="No disponible" />
             ) : (
               <>
                 <img

@@ -45,10 +45,10 @@ export function AyudaEstudiante({ tipoProyecto = 'cafe' }) {
         <div className="space-y-2.5">
           {[
             { icon: '📝', title: 'Retos de texto',       desc: 'Escribe tu respuesta en el campo de texto.' },
-            { icon: '🖼️', title: 'Retos de imagen',      desc: 'Sube una o varias fotos como evidencia.' },
-            { icon: '🎥', title: 'Retos de video',       desc: 'Graba y sube un video.' },
+            { icon: '🖼️', title: 'Retos de imagen',      desc: 'Sube una o varias fotos. Se optimizan solas para que suban rápido aunque tengas poca señal.' },
+            { icon: '🎥', title: 'Retos de video',       desc: 'El video no se sube aquí: lo subes a YouTube o Google Drive y pegas el enlace. Toca "¿Cómo lo subo?" y te explicamos paso a paso.' },
             { icon: '❓', title: 'Retos de preguntas',   desc: 'Responde varias preguntas, cada una con su espacio.' },
-            { icon: '🎬', title: 'Retos multimedia',     desc: 'Combina texto, imágenes y videos.' },
+            { icon: '🎬', title: 'Retos multimedia',     desc: 'Combina texto, fotos y el enlace de tu video.' },
           ].map(({ icon, title, desc }) => (
             <div key={title} className="bg-white rounded-xl p-3.5 border border-[#e8dcca] flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-[#f5efe6] flex items-center justify-center flex-shrink-0 text-base">{icon}</div>
@@ -123,6 +123,18 @@ export function AyudaEstudiante({ tipoProyecto = 'cafe' }) {
             {
               q: '¿Cómo subo fotos desde el celular?',
               a: 'En el formulario de evidencia, toca el área de archivos y selecciona "Cámara" o "Galería" desde tu celular.'
+            },
+            {
+              q: 'Envié la evidencia pero no aparece, ¿la mando otra vez?',
+              a: 'No hace falta. Espera a que el botón deje de decir "Enviando..." y no cierres la pantalla mientras tanto. Si algo falla te lo avisamos con un mensaje en rojo. Aunque toques enviar varias veces, tu evidencia nunca se duplica: siempre se actualiza la misma.'
+            },
+            {
+              q: '¿Por qué no puedo subir el video como archivo?',
+              a: 'Los videos pesan mucho y con internet lento la subida se cae a la mitad. Por eso ahora subes el video a YouTube o Google Drive y aquí solo pegas el enlace. En el formulario toca "¿Cómo lo subo?" y ahí están los pasos.'
+            },
+            {
+              q: 'Mi foto no se ve o dice que no se puede subir',
+              a: 'Si tienes iPhone, entra a Ajustes › Cámara › Formatos y elige "Más compatible": así las fotos salen en JPG y siempre se ven. Otra opción es mandarte la foto por WhatsApp y subirla desde ahí.'
             },
           ].map(({ q, a }) => (
             <details key={q} className="bg-white rounded-xl border border-[#e8dcca] group overflow-hidden">

@@ -10,6 +10,8 @@ import { RankingEstudiante } from './RankingEstudiante'
 import { InsigniasEstudiante } from './InsigniasEstudiante'
 import { AyudaEstudiante } from './AyudaEstudiante'
 import { useEvidenciaNotification } from '../comunes/NotificationToast'
+import { RecomendacionesVideoModal } from '../comunes/RecomendacionesVideoModal'
+import { procesarImagenes } from '../../lib/imagenes'
 import { obtenerRango } from '../../data/rangos'
 
 function DashboardEstudianteGamificado() {
@@ -309,7 +311,11 @@ function DashboardEstudianteGamificado() {
 
   const LEVEL_ICONS = ['🌱', '🌿', '☕', '🏆', '🎯', '⭐', '🔥', '💎']
 
-  const InicioContent = useCallback(() => (
+  // useMemo y no useCallback: al declararlo como componente e insertarlo con
+  // <InicioContent />, cada cambio de dependencia creaba un tipo de componente
+  // nuevo y React desmontaba todo el árbol (los RetoCard perdían su estado y
+  // volvían a consultar la evidencia desde cero).
+  const inicioContent = useMemo(() => (
     <>
       {/* Tarjeta de bienvenida */}
       <div className="bg-white rounded-2xl shadow-lg border border-[#e8dcca] mb-5 overflow-hidden">
@@ -537,7 +543,7 @@ function DashboardEstudianteGamificado() {
               </p>
             </div>
 
-            {activeTab === 'inicio' && <InicioContent />}
+            {activeTab === 'inicio' && inicioContent}
             {activeTab === 'perfil' && (
               <PerfilEstudiante
                 estudiante={estudiante}
@@ -573,7 +579,7 @@ function DashboardEstudianteGamificado() {
         </div>
       )}
     </div>
-  ), [sidebarOpen, activeTab, estudiante, niveles, puntuacionTotal, rango, imagenNivelAmpliada, cargarDatos, user, handleLogout, InicioContent])
+  ), [sidebarOpen, activeTab, estudiante, niveles, puntuacionTotal, rango, imagenNivelAmpliada, cargarDatos, user, handleLogout, inicioContent])
 
   if (loading && !estudiante) {
     return (
@@ -597,20 +603,26 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { verificarEvidencia() }, [reto.id])
-
-  async function verificarEvidencia() {
+  // No se usa maybeSingle(): si por cualquier motivo existiera más de una fila,
+  // maybeSingle devolvía error y la evidencia desaparecía de la pantalla, así que
+  // el estudiante volvía a enviarla una y otra vez.
+  const verificarEvidencia = useCallback(async () => {
+    if (!estudianteId) return
     setLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('evidencias')
       .select('*, respuestas(*), evidencias_archivos(*)')
       .eq('estudiante_id', estudianteId)
       .eq('reto_id', reto.id)
-      .maybeSingle()
+      .order('id', { ascending: false })
+      .limit(1)
 
-    if (data) setEvidencia(data)
+    if (error) console.error('Error consultando la evidencia:', error)
+    setEvidencia(data?.[0] || null)
     setLoading(false)
-  }
+  }, [estudianteId, reto.id])
+
+  useEffect(() => { verificarEvidencia() }, [verificarEvidencia])
 
   const estadoConfig = {
     pendiente: { badge: 'bg-amber-100 text-amber-800', label: '⏳ Pendiente', border: 'border-amber-200' },
@@ -628,7 +640,9 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
     )
   }
 
-  const imagenesEvidencia = evidencia?.evidencias_archivos?.filter(a => a.tipo_archivo === 'imagen').map(a => a.url) || []
+  const archivos = evidencia?.evidencias_archivos || []
+  const imagenesEvidencia = archivos.filter(a => a.tipo_archivo === 'imagen').map(a => a.url)
+  const enlacesEvidencia = archivos.filter(a => a.tipo_archivo === 'video' || a.tipo_archivo === 'audio')
 
   return (
     <div className={`rounded-xl border bg-white overflow-hidden transition-all ${estadoActual?.border || 'border-[#e8dcca]'}`}>
@@ -680,6 +694,25 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
             <div className="p-3 bg-[#f5efe6] rounded-lg border border-[#e8dcca]">
               <p className="text-xs font-semibold text-[#6b4c3a] mb-2">🖼️ Tus imágenes</p>
               <ImageViewer images={imagenesEvidencia} />
+            </div>
+          )}
+          {enlacesEvidencia.length > 0 && !mostrarFormulario && (
+            <div className="p-3 bg-[#f5efe6] rounded-lg border border-[#e8dcca]">
+              <p className="text-xs font-semibold text-[#6b4c3a] mb-2">
+                {enlacesEvidencia[0].tipo_archivo === 'audio' ? '🎵 Tu audio' : '🎥 Tu video'}
+              </p>
+              {enlacesEvidencia.map(enlace => (
+                <a
+                  key={enlace.id}
+                  href={enlace.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-[#6b4c3a] hover:text-[#4a3222] underline break-all"
+                >
+                  <span className="flex-shrink-0">🔗</span>
+                  <span>{enlace.url}</span>
+                </a>
+              ))}
             </div>
           )}
           {evidencia.comentario_padrino && (
@@ -735,20 +768,32 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
   const [texto, setTexto] = useState(evidenciaExistente?.texto_respuesta || '')
   const [archivos, setArchivos] = useState([])
   const [loading, setLoading] = useState(false)
+  const [progreso, setProgreso] = useState('')
+  const [procesando, setProcesando] = useState(false)
   const [vistaPrevia, setVistaPrevia] = useState([])
   const [dragOver, setDragOver] = useState(false)
-  const [archivosExistentes, setArchivosExistentes] = useState(evidenciaExistente?.evidencias_archivos || [])
-  const [eliminados, setEliminados] = useState([])
+  const [mostrarRecomendaciones, setMostrarRecomendaciones] = useState(false)
   const fileInputRef = useRef(null)
+
+  const existentes = evidenciaExistente?.evidencias_archivos || []
+  const [archivosExistentes, setArchivosExistentes] = useState(existentes.filter(a => a.tipo_archivo === 'imagen'))
+  const [eliminados, setEliminados] = useState([])
+
+  const enlaceExistente = existentes.find(a => a.tipo_archivo === 'video' || a.tipo_archivo === 'audio')
+  const [videoUrl, setVideoUrl] = useState(enlaceExistente?.url || '')
+
+  // Un ref además del estado: el estado no se actualiza a tiempo si el
+  // estudiante toca "Enviar" dos veces seguidas en el celular.
+  const enviandoRef = useRef(false)
+  // Cuántas fotos alcanzaron a subirse, por si el envío falla a mitad de camino.
+  const subidasOk = useRef(0)
 
   useEffect(() => {
     const previews = archivos.map((file, idx) => ({
       id: idx,
-      file,
       url: URL.createObjectURL(file),
-      tipo: file.type.startsWith('image/') ? 'imagen' : 'video',
       nombre: file.name,
-      tamaño: (file.size / 1024 / 1024).toFixed(2)
+      tamanio: (file.size / 1024 / 1024).toFixed(2)
     }))
     setVistaPrevia(previews)
     return () => previews.forEach(p => URL.revokeObjectURL(p.url))
@@ -756,18 +801,27 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
 
   const tiposArchivo = reto.tipos_archivo || []
   const puedeSubirImagen = tiposArchivo.includes('imagen')
-  const puedeSubirVideo = tiposArchivo.includes('video')
-  const requiereTexto = tiposArchivo.includes('texto') || tiposArchivo.length === 0
+  // Video y audio ya no se suben como archivo: se pide el enlace, igual que a los
+  // docentes. Eran los que siempre fallaban por peso y quedaban sin evidencia.
+  const pideEnlace = tiposArchivo.includes('video') || tiposArchivo.includes('audio')
+  const esAudio = tiposArchivo.includes('audio') && !tiposArchivo.includes('video')
+  const admiteTexto = tiposArchivo.includes('texto') || tiposArchivo.length === 0
+  // El texto solo es obligatorio cuando es la única forma de responder el reto.
+  const textoObligatorio = admiteTexto && !puedeSubirImagen && !pideEnlace
 
-  const agregarArchivos = (files) => {
-    const lista = Array.from(files)
-    const validos = lista.filter(file => {
-      if (puedeSubirImagen && file.type.startsWith('image/')) return true
-      if (puedeSubirVideo && file.type.startsWith('video/')) return true
-      return false
-    })
-    if (validos.length !== lista.length) toast.error('Algunos archivos no son del tipo permitido')
-    setArchivos(prev => [...prev, ...validos])
+  const totalImagenes = archivosExistentes.length + archivos.length
+
+  async function agregarArchivos(files) {
+    const lista = Array.from(files || [])
+    if (!lista.length) return
+
+    setProcesando(true)
+    // Convierte HEIC a JPG y reduce el peso para que la subida no se caiga.
+    const { ok, errores } = await procesarImagenes(lista)
+    setProcesando(false)
+
+    errores.forEach(msg => toast.error(msg, { duration: 7000 }))
+    if (ok.length) setArchivos(prev => [...prev, ...ok])
   }
 
   const eliminarArchivo = (index) => {
@@ -785,71 +839,194 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
     agregarArchivos(e.dataTransfer.files)
   }
 
+  /** Sube una imagen al bucket y registra la fila. Lanza error si algo falla. */
+  async function subirImagen(evidenciaId, archivo, indice) {
+    const nombreUnico = `${evidenciaId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+
+    const { error: uploadError } = await supabase.storage
+      .from('evidencias')
+      .upload(nombreUnico, archivo, { upsert: false, contentType: archivo.type })
+
+    if (uploadError) {
+      console.error('Error subiendo archivo:', uploadError)
+      throw new Error('No se pudo subir una de las fotos. Revisa tu conexión e inténtalo de nuevo.')
+    }
+
+    const { data: urlData } = supabase.storage.from('evidencias').getPublicUrl(nombreUnico)
+    const { error: insertError } = await supabase.from('evidencias_archivos').insert({
+      evidencia_id: evidenciaId,
+      tipo_archivo: 'imagen',
+      url: urlData.publicUrl,
+      nombre_original: archivo.name,
+      tamanio_bytes: archivo.size,
+      orden: indice
+    })
+    if (insertError) {
+      console.error('Error registrando archivo:', insertError)
+      throw new Error('La foto se subió pero no quedó registrada. Inténtalo de nuevo.')
+    }
+  }
+
+  /**
+   * Devuelve el id de la evidencia de este reto, creándola solo si no existe.
+   * Es a prueba de reenvíos: si otra pestaña o un toque doble ya la creó,
+   * la reutiliza en vez de crear una copia.
+   */
+  async function obtenerOCrearEvidencia(datos) {
+    const { data: existente } = await supabase
+      .from('evidencias')
+      .select('id')
+      .eq('estudiante_id', estudianteId)
+      .eq('reto_id', reto.id)
+      .order('id', { ascending: false })
+      .limit(1)
+
+    if (existente?.[0]?.id) {
+      const { error } = await supabase.from('evidencias').update(datos).eq('id', existente[0].id)
+      if (error) throw error
+      return existente[0].id
+    }
+
+    const { data, error } = await supabase.from('evidencias').insert(datos).select('id')
+
+    // 23505 = ya existe (restricción única estudiante+reto). Se recupera la fila real.
+    if (error?.code === '23505') {
+      const { data: yaCreada } = await supabase
+        .from('evidencias')
+        .select('id')
+        .eq('estudiante_id', estudianteId)
+        .eq('reto_id', reto.id)
+        .limit(1)
+      if (!yaCreada?.[0]?.id) throw error
+      const { error: updError } = await supabase.from('evidencias').update(datos).eq('id', yaCreada[0].id)
+      if (updError) throw updError
+      return yaCreada[0].id
+    }
+    if (error) throw error
+
+    return data?.[0]?.id
+  }
+
+  // Ninguna evidencia puede salir vacía: era la causa de decenas de envíos que
+  // el padrino recibía sin nada que calificar.
+  function validar() {
+    if (procesando) return 'Espera a que terminen de prepararse las fotos.'
+    if (puedeSubirImagen && totalImagenes === 0) {
+      return 'Este reto necesita al menos una foto. Toca "Agregar fotos" antes de enviar.'
+    }
+    if (pideEnlace) {
+      const url = videoUrl.trim()
+      if (!url) return `Pega el enlace de tu ${esAudio ? 'audio' : 'video'} antes de enviar.`
+      if (!/^https?:\/\/\S+$/i.test(url)) return 'El enlace debe empezar con http:// o https://'
+    }
+    if (textoObligatorio && !texto.trim()) return 'Escribe tu respuesta antes de enviar.'
+    if (!puedeSubirImagen && !pideEnlace && !texto.trim()) {
+      return 'La evidencia está vacía. Escribe tu respuesta antes de enviar.'
+    }
+    return null
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
+    if (enviandoRef.current) return
+
+    const problema = validar()
+    if (problema) {
+      toast.error(problema, { duration: 5000 })
+      return
+    }
+
+    enviandoRef.current = true
     setLoading(true)
 
     try {
-      let evidenciaId = evidenciaExistente?.id
       const evidenciaData = {
         estudiante_id: estudianteId,
         reto_id: reto.id,
-        texto_respuesta: reto.tipo_evidencia !== 'preguntas' ? texto : null,
-        estado: 'pendiente'
+        // Antes se descartaba el texto en los retos tipo cuestionario y la
+        // evidencia llegaba vacía; ahora siempre se guarda lo que escribió.
+        texto_respuesta: texto.trim() || null,
+        // Al reenviar tras un rechazo vuelve a quedar pendiente y se limpia la revisión.
+        estado: 'pendiente',
+        puntuacion: null,
+        comentario_padrino: null,
+        fecha_revision: null,
+        fecha_envio: new Date().toISOString()
       }
 
-      if (evidenciaExistente) {
-        const { error } = await supabase.from('evidencias').update(evidenciaData).eq('id', evidenciaId)
-        if (error) throw error
-        // Borrar solo los archivos que el estudiante quitó
-        for (const archivo of eliminados) {
-          const marker = '/object/public/evidencias/'
-          const i = archivo.url?.indexOf(marker) ?? -1
-          if (i !== -1) {
-            await supabase.storage.from('evidencias').remove([archivo.url.slice(i + marker.length)])
-          }
-          await supabase.from('evidencias_archivos').delete().eq('id', archivo.id)
-        }
-      } else {
-        const { data, error } = await supabase.from('evidencias').insert(evidenciaData).select()
-        if (error) throw error
-        evidenciaId = data?.[0]?.id
-      }
-
+      setProgreso('Guardando tu evidencia...')
+      const evidenciaId = await obtenerOCrearEvidencia(evidenciaData)
       if (!evidenciaId) throw new Error('No se pudo obtener el ID de la evidencia')
 
-      for (const archivo of archivos) {
-        const tipo = archivo.type.startsWith('image/') ? 'imagen' : 'video'
-        // Sanitizar nombre: sin espacios ni caracteres especiales
-        const ext = archivo.name.split('.').pop().toLowerCase()
-        const safeExt = ext.replace(/[^a-z0-9]/g, '')
-        const fileName = `${evidenciaId}/${Date.now()}.${safeExt}`
-        const { error: uploadError } = await supabase.storage
-          .from('evidencias')
-          .upload(fileName, archivo, { upsert: true })
-        if (uploadError) { console.error('Error subiendo archivo:', uploadError); continue }
-        const { data: urlData } = supabase.storage.from('evidencias').getPublicUrl(fileName)
-        await supabase.from('evidencias_archivos').insert({
-          evidencia_id: evidenciaId,
-          tipo_archivo: tipo,
-          url: urlData.publicUrl,
-          nombre_original: archivo.name
-        })
+      // Quitar las fotos que el estudiante descartó
+      for (const archivo of eliminados) {
+        const marker = '/object/public/evidencias/'
+        const i = archivo.url?.indexOf(marker) ?? -1
+        if (i !== -1) {
+          await supabase.storage.from('evidencias').remove([archivo.url.slice(i + marker.length)])
+        }
+        await supabase.from('evidencias_archivos').delete().eq('id', archivo.id)
       }
 
-      toast.success('¡Evidencia enviada! Espera la revisión del padrino')
+      // Subir las fotos nuevas, una por una y en orden.
+      for (let i = 0; i < archivos.length; i++) {
+        setProgreso(`Subiendo foto ${i + 1} de ${archivos.length}...`)
+        await subirImagen(evidenciaId, archivos[i], archivosExistentes.length + i)
+        subidasOk.current = i + 1
+      }
+
+      // El video o audio se guarda como enlace, nunca como archivo.
+      if (pideEnlace) {
+        setProgreso('Guardando el enlace...')
+        const urlLimpia = videoUrl.trim()
+        const tipoEnlace = esAudio ? 'audio' : 'video'
+        const etiqueta = esAudio ? 'Enlace del audio' : 'Enlace del video'
+        if (enlaceExistente?.id) {
+          await supabase.from('evidencias_archivos')
+            .update({ url: urlLimpia, tipo_archivo: tipoEnlace, nombre_original: etiqueta })
+            .eq('id', enlaceExistente.id)
+        } else {
+          const { error: enlaceError } = await supabase.from('evidencias_archivos').insert({
+            evidencia_id: evidenciaId,
+            tipo_archivo: tipoEnlace,
+            url: urlLimpia,
+            nombre_original: etiqueta
+          })
+          if (enlaceError) throw new Error('No se pudo guardar el enlace. Inténtalo de nuevo.')
+        }
+      }
+
+      // Verificación final: nunca dar por enviada una evidencia vacía.
+      if (puedeSubirImagen) {
+        const { count } = await supabase
+          .from('evidencias_archivos')
+          .select('id', { count: 'exact', head: true })
+          .eq('evidencia_id', evidenciaId)
+          .eq('tipo_archivo', 'imagen')
+        if (!count) throw new Error('Las fotos no llegaron al servidor. Revisa tu conexión e inténtalo de nuevo.')
+      }
+
+      setArchivos([])
+      setEliminados([])
+      toast.success('¡Evidencia enviada! Espera la revisión del padrino', { duration: 5000 })
       onEnviado()
     } catch (error) {
       console.error('Error enviando evidencia:', error)
-      toast.error('Error al enviar la evidencia. Inténtalo de nuevo.')
+      // Las fotos que sí alcanzaron a subir ya quedaron guardadas: se quitan de la
+      // selección para que al reintentar no se suban por segunda vez.
+      if (subidasOk.current > 0) setArchivos(prev => prev.slice(subidasOk.current))
+      toast.error(error.message || 'Error al enviar la evidencia. Inténtalo de nuevo.', { duration: 7000 })
     } finally {
+      subidasOk.current = 0
+      setProgreso('')
       setLoading(false)
+      enviandoRef.current = false
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="p-4 bg-[#faf7f3] space-y-4">
-      {requiereTexto && (
+      {admiteTexto && (
         <div>
           <label className="block text-xs font-semibold text-[#4a3222] mb-1.5 uppercase tracking-wide">
             📝 Tu respuesta
@@ -860,41 +1037,63 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
             className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-white resize-none"
             rows="3"
             placeholder="Escribe aquí tu respuesta..."
-            required={requiereTexto && archivos.length === 0}
           />
         </div>
       )}
 
-      {(puedeSubirImagen || puedeSubirVideo) && (
+      {/* Enlace del video o audio */}
+      {pideEnlace && (
         <div>
-          {/* Archivos actuales (al editar) */}
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <label className="block text-xs font-semibold text-[#4a3222] uppercase tracking-wide">
+              {esAudio ? '🎵 Enlace de tu audio' : '🎥 Enlace de tu video'}
+            </label>
+            <button
+              type="button"
+              onClick={() => setMostrarRecomendaciones(true)}
+              className="flex items-center gap-1 text-xs font-semibold text-[#6b4c3a] hover:text-[#4a3222] bg-[#f5efe6] hover:bg-[#e8dcca] px-2.5 py-1 rounded-full transition flex-shrink-0"
+            >
+              💡 ¿Cómo lo subo?
+            </button>
+          </div>
+          <input
+            type="url"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-white"
+            placeholder="https://youtu.be/... o enlace de Google Drive"
+            inputMode="url"
+          />
+          <p className="text-[11px] text-[#a68a64] mt-1.5 leading-relaxed">
+            Sube tu {esAudio ? 'audio' : 'video'} a <strong>YouTube</strong>, <strong>Google Drive</strong> u otra
+            plataforma y pega aquí el enlace. Verifica que no quede privado, para que tu padrino pueda verlo.
+          </p>
+        </div>
+      )}
+
+      {puedeSubirImagen && (
+        <div>
+          {/* Fotos actuales (al editar) */}
           {archivosExistentes.length > 0 && (
             <div className="mb-3">
               <label className="block text-xs font-semibold text-[#4a3222] mb-1.5 uppercase tracking-wide">
-                🗂️ Archivos actuales
+                🗂️ Fotos actuales
               </label>
-              <p className="text-[11px] text-[#a68a64] mb-2">Quita los que no quieras conservar y agrega nuevos abajo.</p>
+              <p className="text-[11px] text-[#a68a64] mb-2">Quita las que no quieras conservar y agrega nuevas abajo.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {archivosExistentes.map((archivo) => (
                   <div key={archivo.id} className="relative group rounded-xl overflow-hidden border border-[#e8dcca] bg-white shadow-sm">
-                    {archivo.tipo_archivo === 'imagen' ? (
-                      <img src={archivo.url} alt={archivo.nombre_original || 'Archivo'} className="w-full h-20 sm:h-24 object-cover" />
-                    ) : (
-                      <div className="w-full h-20 sm:h-24 flex flex-col items-center justify-center bg-[#f5efe6]">
-                        <span className="text-2xl">🎥</span>
-                        <span className="text-[10px] text-[#a68a64] mt-1">Video</span>
-                      </div>
-                    )}
+                    <img src={archivo.url} alt={archivo.nombre_original || 'Foto'} className="w-full h-20 sm:h-24 object-cover" />
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] text-[#4a3222] font-medium truncate" title={archivo.nombre_original}>
-                        {archivo.nombre_original || 'Archivo'}
+                        {archivo.nombre_original || 'Foto'}
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => quitarExistente(archivo)}
-                      className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-all shadow-md"
-                      title="Quitar archivo"
+                      className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-[11px] font-bold transition-all shadow-md"
+                      title="Quitar foto"
                     >
                       ✕
                     </button>
@@ -905,15 +1104,16 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
           )}
 
           <label className="block text-xs font-semibold text-[#4a3222] mb-1.5 uppercase tracking-wide">
-            📎 Archivos a subir
+            📎 Agregar fotos
           </label>
 
-          {/* Drop zone */}
           <div
-            className={`border-2 border-dashed rounded-xl p-5 text-center transition-all cursor-pointer ${
+            className={`border-2 border-dashed rounded-xl p-5 text-center transition-all ${
+              procesando ? 'border-[#d4c4a8] bg-[#f5efe6] cursor-wait' : 'cursor-pointer'
+            } ${
               dragOver ? 'border-[#6b4c3a] bg-[#f5efe6] scale-[1.01]' : 'border-[#d4c4a8] hover:border-[#6b4c3a] bg-white hover:bg-[#faf7f3]'
             }`}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !procesando && fileInputRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
@@ -921,50 +1121,48 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
             <input
               ref={fileInputRef}
               type="file"
-              accept={[puedeSubirImagen && 'image/*', puedeSubirVideo && 'video/*'].filter(Boolean).join(',')}
+              accept="image/*"
               multiple
               onChange={(e) => { agregarArchivos(e.target.files); e.target.value = '' }}
               className="hidden"
             />
-            <div className="text-3xl mb-1">{dragOver ? '📂' : '📁'}</div>
-            <p className="text-sm font-medium text-[#6b4c3a]">
-              {dragOver ? 'Suelta los archivos aquí' : 'Haz clic o arrastra archivos aquí'}
-            </p>
-            <p className="text-xs text-[#a68a64] mt-1">
-              {[puedeSubirImagen && 'Imágenes', puedeSubirVideo && 'Videos'].filter(Boolean).join(' · ')}
-            </p>
+            {procesando ? (
+              <>
+                <div className="text-3xl mb-1 animate-pulse">⏳</div>
+                <p className="text-sm font-medium text-[#6b4c3a]">Preparando tus fotos...</p>
+              </>
+            ) : (
+              <>
+                <div className="text-3xl mb-1">{dragOver ? '📂' : '📷'}</div>
+                <p className="text-sm font-medium text-[#6b4c3a]">
+                  {dragOver ? 'Suelta las fotos aquí' : 'Toca aquí para agregar fotos'}
+                </p>
+                <p className="text-xs text-[#a68a64] mt-1">
+                  Se optimizan solas para que suban rápido, aunque tengas poca señal
+                </p>
+              </>
+            )}
           </div>
 
-          {/* Vista previa de archivos */}
+          {/* Fotos nuevas seleccionadas */}
           {vistaPrevia.length > 0 && (
             <div className="mt-3">
               <p className="text-xs font-semibold text-[#4a3222] mb-2">
-                {vistaPrevia.length} {vistaPrevia.length === 1 ? 'archivo seleccionado' : 'archivos seleccionados'}
+                {vistaPrevia.length} {vistaPrevia.length === 1 ? 'foto lista para enviar' : 'fotos listas para enviar'}
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {vistaPrevia.map((prev, idx) => (
-                  <div key={idx} className="relative group rounded-xl overflow-hidden border border-[#e8dcca] bg-white shadow-sm">
-                    {prev.tipo === 'imagen' ? (
-                      <img
-                        src={prev.url}
-                        alt={prev.nombre}
-                        className="w-full h-20 sm:h-24 object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-20 sm:h-24 flex flex-col items-center justify-center bg-[#f5efe6]">
-                        <span className="text-2xl">🎥</span>
-                        <span className="text-[10px] text-[#a68a64] mt-1">Video</span>
-                      </div>
-                    )}
+                  <div key={prev.id} className="relative group rounded-xl overflow-hidden border border-[#e8dcca] bg-white shadow-sm">
+                    <img src={prev.url} alt={prev.nombre} className="w-full h-20 sm:h-24 object-cover" />
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] text-[#4a3222] font-medium truncate" title={prev.nombre}>{prev.nombre}</p>
-                      <p className="text-[10px] text-[#a68a64]">{prev.tamaño} MB</p>
+                      <p className="text-[10px] text-[#a68a64]">{prev.tamanio} MB</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => eliminarArchivo(idx)}
-                      className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-all shadow-md"
-                      title="Eliminar archivo"
+                      className="absolute top-1.5 right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-[11px] font-bold transition-all shadow-md"
+                      title="Quitar foto"
                     >
                       ✕
                     </button>
@@ -973,19 +1171,25 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
               </div>
             </div>
           )}
+
+          {totalImagenes === 0 && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-2">
+              ⚠️ Este reto necesita al menos una foto para poder enviarse.
+            </p>
+          )}
         </div>
       )}
 
       <div className="flex gap-2 pt-1">
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || procesando}
           className="flex-1 bg-[#6b4c3a] hover:bg-[#4a3222] disabled:opacity-50 text-white py-2.5 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
               <span className="animate-spin">⏳</span>
-              <span>Enviando...</span>
+              <span>{progreso || 'Enviando...'}</span>
             </>
           ) : (
             <>
@@ -996,12 +1200,27 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
         </button>
         <button
           type="button"
-          onClick={() => { setTexto(''); setArchivos([]) }}
-          className="px-4 py-2.5 bg-[#e8dcca] hover:bg-[#d4c4a8] text-[#6b4c3a] rounded-xl transition-all text-sm font-medium"
+          disabled={loading}
+          onClick={() => { setTexto(''); setArchivos([]); setVideoUrl('') }}
+          className="px-4 py-2.5 bg-[#e8dcca] hover:bg-[#d4c4a8] disabled:opacity-50 text-[#6b4c3a] rounded-xl transition-all text-sm font-medium"
         >
           Limpiar
         </button>
       </div>
+
+      {loading && (
+        <p className="text-[11px] text-[#a68a64] text-center">
+          No cierres esta pantalla ni vuelvas a tocar el botón: tu evidencia se está enviando.
+        </p>
+      )}
+
+      {mostrarRecomendaciones && (
+        <RecomendacionesVideoModal
+          onClose={() => setMostrarRecomendaciones(false)}
+          variante="estudiante"
+          instruccion={reto.instruccion_evidencia}
+        />
+      )}
     </form>
   )
 }
