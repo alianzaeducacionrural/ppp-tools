@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { getAvatarById } from '../../data/avatares'
 import { Avatar } from '../comunes/Avatar'
 import { obtenerRango } from '../../data/rangos'
+import { ImageViewer } from '../comunes/ImageViewer'
+import { esEnlaceExterno } from '../../lib/imagenes'
 
 function estadoReto(evidencia) {
   if (!evidencia) return { label: 'Sin enviar', icon: '⚪', cls: 'bg-[#f5efe6] text-[#a68a64] border-[#e8dcca]' }
@@ -14,10 +16,75 @@ function estadoReto(evidencia) {
   }
 }
 
+// Contenido de una evidencia enviada, en modo solo lectura (lo ven padrino y docente).
+function ContenidoEvidencia({ evidencia }) {
+  const archivos = evidencia.evidencias_archivos || []
+  const imagenes = archivos.filter(a => a.tipo_archivo === 'imagen').map(a => a.url)
+  const enlaces = archivos.filter(a => a.tipo_archivo === 'video' || a.tipo_archivo === 'audio')
+  const sinContenido = !evidencia.texto_respuesta && imagenes.length === 0 && enlaces.length === 0
+
+  return (
+    <div className="px-4 pb-4 pt-1 bg-[#faf7f3] border-t border-[#f0e8dc] space-y-3">
+      {evidencia.texto_respuesta && (
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1">📝 Respuesta</p>
+          <p className="text-xs text-[#4a3222] whitespace-pre-wrap leading-relaxed">{evidencia.texto_respuesta}</p>
+        </div>
+      )}
+
+      {imagenes.length > 0 && (
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1">🖼️ Imágenes</p>
+          <ImageViewer images={imagenes} />
+        </div>
+      )}
+
+      {enlaces.length > 0 && (
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1">
+            {enlaces[0].tipo_archivo === 'audio' ? '🎵 Audio' : '🎥 Video'}
+          </p>
+          {enlaces.map(enlace => (
+            esEnlaceExterno(enlace.url) ? (
+              <a
+                key={enlace.id}
+                href={enlace.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-white border border-[#e8dcca] hover:border-[#6b4c3a] rounded-lg px-3 py-2 text-xs text-[#6b4c3a] transition break-all"
+              >
+                <span className="flex-shrink-0">▶️</span>
+                <span className="flex-1 min-w-0 truncate">{enlace.url}</span>
+                <span className="flex-shrink-0">↗</span>
+              </a>
+            ) : (
+              <video key={enlace.id} src={enlace.url} controls className="rounded-lg max-h-44 w-full" />
+            )
+          ))}
+        </div>
+      )}
+
+      {evidencia.comentario_padrino && (
+        <div className={`rounded-lg border p-2.5 ${evidencia.estado === 'aprobado' ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+          <p className="text-[10px] font-bold text-[#4a3222] mb-0.5">
+            {evidencia.estado === 'aprobado' ? '✅ Comentario del padrino' : '❌ Motivo de rechazo'}
+          </p>
+          <p className="text-xs text-[#6b4c3a] leading-relaxed">{evidencia.comentario_padrino}</p>
+        </div>
+      )}
+
+      {sinContenido && (
+        <p className="text-xs text-[#a68a64] italic">Esta evidencia se envió sin contenido.</p>
+      )}
+    </div>
+  )
+}
+
 export function EstudianteDetalleModal({ estudiante, onClose }) {
   const [niveles, setNiveles] = useState([])
   const [loading, setLoading] = useState(true)
   const [colapsados, setColapsados] = useState(new Set())
+  const [retoExpandido, setRetoExpandido] = useState(null)
 
   useEffect(() => {
     cargarDetalle()
@@ -46,7 +113,9 @@ export function EstudianteDetalleModal({ estudiante, onClose }) {
       nivelIds.length
         ? supabase.from('retos').select('id, texto, nivel_id, orden, tipo_evidencia').in('nivel_id', nivelIds).order('orden', { ascending: true })
         : Promise.resolve({ data: [] }),
-      supabase.from('evidencias').select('id, reto_id, estado, puntuacion, fecha_envio').eq('estudiante_id', estudiante.id),
+      supabase.from('evidencias')
+        .select('id, reto_id, estado, puntuacion, fecha_envio, fecha_revision, texto_respuesta, comentario_padrino, evidencias_archivos(*)')
+        .eq('estudiante_id', estudiante.id),
       supabase.from('insignias_obtenidas').select('nivel_id').eq('estudiante_id', estudiante.id)
     ])
 
@@ -201,18 +270,36 @@ export function EstudianteDetalleModal({ estudiante, onClose }) {
                       ) : (
                         nivel.retos.map((reto, idx) => {
                           const est = estadoReto(reto.evidencia)
+                          const tieneContenido = !!reto.evidencia
+                          const abierto = retoExpandido === reto.id
                           return (
-                            <div key={reto.id} className="px-4 py-3 flex items-start gap-3">
-                              <span className="text-[11px] font-bold text-[#a68a64] mt-0.5 flex-shrink-0">{idx + 1}.</span>
-                              <p className="text-xs text-[#4a3222] leading-snug flex-1">{reto.texto}</p>
-                              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${est.cls} whitespace-nowrap`}>
-                                  {est.icon} {est.label}
-                                </span>
-                                {reto.evidencia?.estado === 'aprobado' && (
-                                  <span className="text-[10px] text-[#6b4c3a] font-bold">+{reto.evidencia.puntuacion || 0} pts</span>
-                                )}
-                              </div>
+                            <div key={reto.id}>
+                              <button
+                                type="button"
+                                onClick={() => tieneContenido && setRetoExpandido(abierto ? null : reto.id)}
+                                className={`w-full px-4 py-3 flex items-start gap-3 text-left transition ${
+                                  tieneContenido ? 'hover:bg-[#faf7f3] cursor-pointer' : 'cursor-default'
+                                }`}
+                              >
+                                <span className="text-[11px] font-bold text-[#a68a64] mt-0.5 flex-shrink-0">{idx + 1}.</span>
+                                <p className="text-xs text-[#4a3222] leading-snug flex-1">{reto.texto}</p>
+                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${est.cls} whitespace-nowrap`}>
+                                    {est.icon} {est.label}
+                                  </span>
+                                  {reto.evidencia?.estado === 'aprobado' && (
+                                    <span className="text-[10px] text-[#6b4c3a] font-bold">+{reto.evidencia.puntuacion || 0} pts</span>
+                                  )}
+                                  {tieneContenido && (
+                                    <span className="text-[9px] text-[#a68a64] flex items-center gap-0.5">
+                                      {abierto ? 'Ocultar' : 'Ver evidencia'} <span className={`transition-transform ${abierto ? 'rotate-180' : ''}`}>▼</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                              {abierto && tieneContenido && (
+                                <ContenidoEvidencia evidencia={reto.evidencia} />
+                              )}
                             </div>
                           )
                         })
