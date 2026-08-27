@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { Login } from './components/comunes/Login'
 import { SeleccionRegistro } from './components/comunes/SeleccionRegistro'
+import { CrearNuevaPassword } from './components/comunes/CrearNuevaPassword'
 import DashboardEstudianteGamificado from './components/estudiante/DashboardEstudianteGamificado'
 import DashboardPadrino from './components/padrino/DashboardPadrino'
 import DashboardAdmin from './components/admin/DashboardAdmin'
@@ -97,6 +98,12 @@ function AppRoutes() {
 
   if (loading) {
     return <LoadingScreen />
+  }
+
+  // Si el admin restableció la contraseña, obligar a crear una nueva antes de
+  // dejar entrar a cualquier panel (aplica a todos los roles).
+  if (user && user.user_metadata?.debe_cambiar_password) {
+    return <CrearNuevaPassword />
   }
 
   // Si hay usuario autenticado pero sin rol → pantalla de error (previene redirect loop)

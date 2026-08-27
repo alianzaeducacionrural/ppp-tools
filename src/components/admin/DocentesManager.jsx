@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
-import { CambiarPasswordModal } from './CambiarPasswordModal'
 import { eliminarCuentaAuth } from '../../lib/eliminarAuth'
+import { resetearPassword, PASSWORD_POR_DEFECTO } from '../../lib/resetearPassword'
 
 const SELECT_CLS = 'px-3 py-2 border border-[#e8dcca] rounded-lg focus:ring-2 focus:ring-[#6b4c3a] focus:outline-none text-[#4a3222] bg-white disabled:opacity-50 disabled:cursor-not-allowed w-full'
 
@@ -14,7 +14,7 @@ export function DocentesManager() {
   const [loading, setLoading] = useState(true)
   const [municipios, setMunicipios] = useState([])
   const [filtros, setFiltros] = useState(FILTROS_INICIALES)
-  const [passwordModal, setPasswordModal] = useState({ open: false, usuario: null })
+  const [reseteandoId, setReseteandoId] = useState(null)
 
   useEffect(() => {
     supabase
@@ -72,6 +72,23 @@ export function DocentesManager() {
     setFiltros(FILTROS_INICIALES)
   }
 
+  async function handleResetPassword(doc) {
+    if (!doc.user_id) {
+      toast.error('Este docente no tiene una cuenta de acceso.')
+      return
+    }
+    if (!confirm(
+      `¿Restablecer la contraseña de ${doc.nombre_completo} a "${PASSWORD_POR_DEFECTO}"?\n\n` +
+      `Deberá crear una contraseña nueva la próxima vez que inicie sesión.`
+    )) return
+
+    setReseteandoId(doc.id)
+    const { ok, error } = await resetearPassword(doc.user_id)
+    setReseteandoId(null)
+    if (ok) toast.success(`Contraseña restablecida a "${PASSWORD_POR_DEFECTO}"`)
+    else toast.error(error || 'No se pudo restablecer la contraseña')
+  }
+
   async function handleDelete(id) {
     if (!confirm('¿Eliminar este docente? Se borrarán todos sus proyectos dirigidos (costos, utilidades, archivos) y su cuenta de acceso.')) return
 
@@ -101,8 +118,12 @@ export function DocentesManager() {
     cargarDocentes()
   }
 
-  const docentesFiltrados = filtros.busqueda.trim()
-    ? docentes.filter(d => d.nombre_completo?.toLowerCase().includes(filtros.busqueda.trim().toLowerCase()))
+  const termino = filtros.busqueda.trim().toLowerCase()
+  const docentesFiltrados = termino
+    ? docentes.filter(d =>
+        [d.nombre_completo, d.email, d.numero_documento, d.telefono]
+          .some(v => v?.toLowerCase().includes(termino))
+      )
     : docentes
 
   const hayFiltros = filtros.municipio_id || filtros.busqueda
@@ -117,7 +138,7 @@ export function DocentesManager() {
             type="text"
             value={filtros.busqueda}
             onChange={(e) => setFiltros(prev => ({ ...prev, busqueda: e.target.value }))}
-            placeholder="Buscar por nombre..."
+            placeholder="Buscar por nombre, correo o documento..."
             className={SELECT_CLS}
           />
           <select
@@ -175,13 +196,14 @@ export function DocentesManager() {
                     <td className="px-4 py-3 text-[#6b4c3a] text-sm">
                       {conteo ? `${conteo.aprobados}/${conteo.total} aprobados` : 'Sin proyectos'}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
                       <button
-                        onClick={() => setPasswordModal({ open: true, usuario: doc })}
-                        className="text-[#6b4c3a] hover:text-[#4a3222] mr-3 text-sm font-medium inline-flex items-center gap-1"
-                        title="Cambiar contraseña"
+                        onClick={() => handleResetPassword(doc)}
+                        disabled={reseteandoId === doc.id}
+                        className="text-[#6b4c3a] hover:text-[#4a3222] mr-3 text-sm font-medium inline-flex items-center gap-1 disabled:opacity-50"
+                        title="Restablecer contraseña a la de por defecto"
                       >
-                        🔑 Contraseña
+                        {reseteandoId === doc.id ? '⏳' : '🔑'} Restablecer
                       </button>
                       <button
                         onClick={() => handleDelete(doc.id)}
@@ -198,14 +220,6 @@ export function DocentesManager() {
         </div>
       )}
 
-      {passwordModal.open && (
-        <CambiarPasswordModal
-          usuario={passwordModal.usuario}
-          userType="docente"
-          onClose={() => setPasswordModal({ open: false, usuario: null })}
-          onSuccess={cargarDocentes}
-        />
-      )}
     </div>
   )
 }
