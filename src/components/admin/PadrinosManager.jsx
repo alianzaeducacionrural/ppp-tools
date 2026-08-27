@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { eliminarCuentaAuth } from '../../lib/eliminarAuth'
-import { resetearPassword, PASSWORD_POR_DEFECTO } from '../../lib/resetearPassword'
+import { PASSWORD_POR_DEFECTO } from '../../lib/resetearPassword'
+import { ResetPasswordModal } from './ResetPasswordModal'
 
 export function PadrinosManager() {
   const [padrinos, setPadrinos] = useState([])
   const [loading, setLoading] = useState(true)
-  const [reseteandoId, setReseteandoId] = useState(null)
+  const [resetUsuario, setResetUsuario] = useState(null)
   const [editModal, setEditModal] = useState({ open: false, padrino: null })
   const [formData, setFormData] = useState({ email: '', nombre: '', password: '' })
 
@@ -81,23 +82,6 @@ export function PadrinosManager() {
       await cargarPadrinos()
     }
     setLoading(false)
-  }
-
-  async function handleResetPassword(padrino) {
-    if (!padrino.user_id) {
-      toast.error('Este padrino no tiene una cuenta de acceso.')
-      return
-    }
-    if (!confirm(
-      `¿Restablecer la contraseña de ${padrino.nombre} a "${PASSWORD_POR_DEFECTO}"?\n\n` +
-      `Deberá crear una contraseña nueva la próxima vez que inicie sesión.`
-    )) return
-
-    setReseteandoId(padrino.id)
-    const { ok, error } = await resetearPassword(padrino.user_id)
-    setReseteandoId(null)
-    if (ok) toast.success(`Contraseña restablecida a "${PASSWORD_POR_DEFECTO}"`)
-    else toast.error(error || 'No se pudo restablecer la contraseña')
   }
 
   async function handleToggleActivo(padrino) {
@@ -249,12 +233,11 @@ export function PadrinosManager() {
                         ✏️ Editar
                       </button>
                       <button
-                        onClick={() => handleResetPassword(padrino)}
-                        disabled={reseteandoId === padrino.id}
-                        className="text-[#6b4c3a] hover:text-[#4a3222] mr-3 text-sm font-medium inline-flex items-center gap-1 disabled:opacity-50"
+                        onClick={() => setResetUsuario(padrino)}
+                        className="text-[#6b4c3a] hover:text-[#4a3222] mr-3 text-sm font-medium inline-flex items-center gap-1"
                         title="Restablecer contraseña a la de por defecto"
                       >
-                        {reseteandoId === padrino.id ? '⏳' : '🔑'} Restablecer
+                        🔑 Restablecer
                       </button>
                       <button
                         onClick={() => handleEliminarPadrino(padrino.id)}
@@ -283,6 +266,10 @@ export function PadrinosManager() {
           <li>• Puedes restablecer la contraseña de cualquier padrino a "{PASSWORD_POR_DEFECTO}" con el botón 🔑 (deberá crear una nueva al entrar)</li>
         </ul>
       </div>
+
+      {resetUsuario && (
+        <ResetPasswordModal usuario={resetUsuario} onClose={() => setResetUsuario(null)} />
+      )}
 
       {editModal.open && editModal.padrino && (
         <EditarPadrinoModal
