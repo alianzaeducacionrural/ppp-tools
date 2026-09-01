@@ -32,9 +32,12 @@ export function RankingParticipantes() {
   async function cargarRanking() {
     setLoading(true)
 
+    // Se usa estudiantes.puntuacion_total (legible por todos) en vez de sumar
+    // evidencias: RLS solo deja ver las evidencias propias, así que sumarlas
+    // dejaba a los demás participantes en 0.
     let query = supabase
       .from('estudiantes')
-      .select('id, nombre_completo, grado, tipo_proyecto, municipios(nombre), instituciones(nombre)')
+      .select('id, nombre_completo, grado, tipo_proyecto, puntuacion_total, municipios(nombre), instituciones(nombre)')
 
     if (filtros.municipio_id) query = query.eq('municipio_id', filtros.municipio_id)
     if (filtros.grado)        query = query.eq('grado', filtros.grado)
@@ -48,21 +51,8 @@ export function RankingParticipantes() {
       return
     }
 
-    const ids = estudiantes.map(e => e.id)
-
-    const { data: evidencias } = await supabase
-      .from('evidencias')
-      .select('estudiante_id, puntuacion')
-      .eq('estado', 'aprobado')
-      .in('estudiante_id', ids)
-
-    const puntajes = {}
-    ;(evidencias || []).forEach(ev => {
-      puntajes[ev.estudiante_id] = (puntajes[ev.estudiante_id] || 0) + (ev.puntuacion || 0)
-    })
-
     const clasificacion = estudiantes
-      .map(e => ({ ...e, puntos: puntajes[e.id] || 0 }))
+      .map(e => ({ ...e, puntos: e.puntuacion_total || 0 }))
       .sort((a, b) => b.puntos - a.puntos)
 
     setRanking(clasificacion)

@@ -21,9 +21,12 @@ export function RankingEstudiante({ estudiante }) {
   async function cargarRanking() {
     setLoading(true)
 
+    // Se lee estudiantes.puntuacion_total (legible por todos) en vez de sumar
+    // evidencias: RLS solo deja ver las evidencias propias, así que sumarlas
+    // dejaba a los demás compañeros en 0 puntos.
     const { data: estudiantesData, error } = await supabase
       .from('estudiantes')
-      .select('id, nombre_completo, avatar_id, grado, tipo_proyecto, instituciones(nombre), municipios(nombre)')
+      .select('id, nombre_completo, avatar_id, grado, tipo_proyecto, puntuacion_total, instituciones(nombre), municipios(nombre)')
       .eq('grado', estudiante.grado)
       .eq('tipo_proyecto', estudiante.tipo_proyecto)
 
@@ -39,20 +42,8 @@ export function RankingEstudiante({ estudiante }) {
       return
     }
 
-    const ids = estudiantesData.map(e => e.id)
-    const { data: evidencias } = await supabase
-      .from('evidencias')
-      .select('estudiante_id, puntuacion')
-      .eq('estado', 'aprobado')
-      .in('estudiante_id', ids)
-
-    const totales = {}
-    ;(evidencias || []).forEach(ev => {
-      totales[ev.estudiante_id] = (totales[ev.estudiante_id] || 0) + (ev.puntuacion || 0)
-    })
-
     const clasificacion = estudiantesData
-      .map(e => ({ ...e, puntuacion_total: totales[e.id] || 0 }))
+      .map(e => ({ ...e, puntuacion_total: e.puntuacion_total || 0 }))
       .sort((a, b) => b.puntuacion_total - a.puntuacion_total)
 
     setRanking(clasificacion)
