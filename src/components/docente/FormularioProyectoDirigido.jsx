@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { RecomendacionesVideoModal } from '../comunes/RecomendacionesVideoModal'
 import { procesarImagenes } from '../../lib/imagenes'
+import { PLAZO_EVIDENCIAS_CERRADO, MENSAJE_PLAZO_CERRADO } from '../comunes/PlazoCerradoModal'
 
 const INPUT_CLS = 'w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition'
 const ROW_INPUT = 'px-3 py-2 text-sm border border-[#e8dcca] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] bg-[#faf8f5] transition'
@@ -195,6 +196,10 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
   async function handleSubmit(e) {
     e.preventDefault()
     if (enviandoRef.current) return
+    if (PLAZO_EVIDENCIAS_CERRADO) {
+      toast.error(MENSAJE_PLAZO_CERRADO)
+      return
+    }
 
     if (!formData.titulo.trim()) {
       toast.error('El título del proyecto es obligatorio')
@@ -596,9 +601,12 @@ export function FormularioProyectoDirigido({ docente, proyectoExistente, onGuard
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={loading || procesandoFotos}
-          className="flex-1 bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-2.5 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 text-sm">
-          {loading
+        <button type="submit" disabled={loading || procesandoFotos || PLAZO_EVIDENCIAS_CERRADO}
+          title={PLAZO_EVIDENCIAS_CERRADO ? MENSAJE_PLAZO_CERRADO : undefined}
+          className="flex-1 bg-gradient-to-r from-[#6b4c3a] to-[#4a3222] text-white py-2.5 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+          {PLAZO_EVIDENCIAS_CERRADO
+            ? '🔒 Plazo finalizado'
+            : loading
             ? (progreso || 'Guardando...')
             : proyectoExistente ? 'Guardar y reenviar' : 'Enviar proyecto dirigido'}
         </button>

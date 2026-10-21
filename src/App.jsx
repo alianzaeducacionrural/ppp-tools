@@ -9,6 +9,7 @@ import DashboardEstudianteGamificado from './components/estudiante/DashboardEstu
 import DashboardPadrino from './components/padrino/DashboardPadrino'
 import DashboardAdmin from './components/admin/DashboardAdmin'
 import DashboardDocente from './components/docente/DashboardDocente'
+import { PlazoCerradoModal, PLAZO_EVIDENCIAS_CERRADO } from './components/comunes/PlazoCerradoModal'
 
 function LoadingScreen() {
   return (
@@ -112,6 +113,8 @@ function AppRoutes() {
   }
 
   return (
+    <>
+    {PLAZO_EVIDENCIAS_CERRADO && (rol === 'estudiante' || rol === 'docente') && <PlazoCerradoModal />}
     <Routes>
       {/* Rutas públicas */}
       <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
@@ -132,6 +135,7 @@ function AppRoutes() {
       {/* Ruta por defecto */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }
 

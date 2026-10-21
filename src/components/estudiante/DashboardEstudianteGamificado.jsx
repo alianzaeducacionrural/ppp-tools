@@ -12,6 +12,7 @@ import { AyudaEstudiante } from './AyudaEstudiante'
 import { useEvidenciaNotification } from '../comunes/NotificationToast'
 import { RecomendacionesVideoModal } from '../comunes/RecomendacionesVideoModal'
 import { procesarImagenes } from '../../lib/imagenes'
+import { PLAZO_EVIDENCIAS_CERRADO, MENSAJE_PLAZO_CERRADO } from '../comunes/PlazoCerradoModal'
 import { obtenerRango } from '../../data/rangos'
 
 function DashboardEstudianteGamificado() {
@@ -929,6 +930,10 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
   async function handleSubmit(e) {
     e.preventDefault()
     if (enviandoRef.current) return
+    if (PLAZO_EVIDENCIAS_CERRADO) {
+      toast.error(MENSAJE_PLAZO_CERRADO)
+      return
+    }
 
     const problema = validar()
     if (problema) {
@@ -1183,10 +1188,16 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
       <div className="flex gap-2 pt-1">
         <button
           type="submit"
-          disabled={loading || procesando}
-          className="flex-1 bg-[#6b4c3a] hover:bg-[#4a3222] disabled:opacity-50 text-white py-2.5 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2"
+          disabled={loading || procesando || PLAZO_EVIDENCIAS_CERRADO}
+          title={PLAZO_EVIDENCIAS_CERRADO ? MENSAJE_PLAZO_CERRADO : undefined}
+          className="flex-1 bg-[#6b4c3a] hover:bg-[#4a3222] disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2"
         >
-          {loading ? (
+          {PLAZO_EVIDENCIAS_CERRADO ? (
+            <>
+              <span>🔒</span>
+              <span>Plazo finalizado</span>
+            </>
+          ) : loading ? (
             <>
               <span className="animate-spin">⏳</span>
               <span>{progreso || 'Enviando...'}</span>
