@@ -82,12 +82,15 @@ Una institución educativa necesita seguir enviando evidencias porque su docente
 Estado: el código del envío extra está escrito y `npm run build` pasa (el único aviso de lint es antiguo, en `DashboardPadrino.jsx`). **No hay commit** (13 archivos sin commit) y **nada se ha probado contra Supabase**.
 
 Pasos, en orden:
-1. En Supabase → SQL Editor, ejecutar `sql/habilitar-instituciones.sql` **cambiando antes** los dos correos de ejemplo por los de `VITE_ADMIN_EMAILS` (política de escritura de `habilitaciones_institucion`).
+1. En Supabase → SQL Editor, ejecutar `supabase/migraciones/2026-10-23_habilitar-instituciones.sql` **cambiando antes** los dos correos de ejemplo por los de `VITE_ADMIN_EMAILS` (política de escritura de `habilitaciones_institucion`).
 2. Hacer commit y desplegar (Vercel, rama conectada).
 3. Probar de punta a punta con la institución real: admin habilita y asigna padrino → estudiante envía un reto pendiente → padrino lo ve en Tipo "Adicionales" y lo califica → verificar que `puntuacion_total`, ranking y conteos no cambian → verificar que un estudiante de otra institución sigue viendo el modal de plazo cerrado.
 4. Revisar/ajustar las políticas RLS de `evidencias` para que las adicionales solo las lean el estudiante, su docente y los padrinos asignados (necesita ver las políticas actuales).
 5. Confirmar con el equipo la escala de la nota (se usó 0–100, igual que la puntuación) y si el estudiante debe ver su nota (hoy no se muestra para adicionales).
 6. Decidir si el docente necesita ver las notas adicionales (no se tocó su vista; podría ya ver las evidencias sin filtro).
 7. Comprobar si existe algún trigger que otorgue insignias/niveles al aprobar y excluir las adicionales si es así.
+
+**Añadido después:** el docente ve las evidencias adicionales con su nota ("Adicional · nota X/100 (no suma)") en el detalle de cada estudiante (`EstudianteDetalleModal` con `incluirAdicionales`, solo desde la vista del docente). La migración `supabase/migraciones/2026-10-23_rls-evidencias-adicionales.sql` crea políticas RLS *restrictivas* sobre `evidencias` y `evidencias_archivos` (se suman a las existentes sin tocarlas). **Falta ejecutarla en Supabase y probarla** (un padrino no asignado no debe ver las adicionales; un docente de otra institución tampoco). Las fotos viven en un bucket público: la URL, si alguien la tiene, sigue abierta.
+
 
 Para reabrir el concurso para todos: `PLAZO_EVIDENCIAS_CERRADO = false` y redesplegar.

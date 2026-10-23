@@ -80,7 +80,8 @@ function ContenidoEvidencia({ evidencia }) {
   )
 }
 
-export function EstudianteDetalleModal({ estudiante, onClose }) {
+// incluirAdicionales: el docente ve también las evidencias enviadas tras el cierre (con su nota).
+export function EstudianteDetalleModal({ estudiante, onClose, incluirAdicionales = false }) {
   const [niveles, setNiveles] = useState([])
   const [loading, setLoading] = useState(true)
   const [colapsados, setColapsados] = useState(new Set())
@@ -113,10 +114,12 @@ export function EstudianteDetalleModal({ estudiante, onClose }) {
       nivelIds.length
         ? supabase.from('retos').select('id, texto, nivel_id, orden, tipo_evidencia').in('nivel_id', nivelIds).order('orden', { ascending: true })
         : Promise.resolve({ data: [] }),
-      supabase.from('evidencias')
-        .select('id, reto_id, estado, puntuacion, fecha_envio, fecha_revision, texto_respuesta, comentario_padrino, evidencias_archivos(*)')
-        .eq('estudiante_id', estudiante.id)
-        .eq('es_adicional', false),
+      (() => {
+        const q = supabase.from('evidencias')
+          .select('id, reto_id, estado, puntuacion, es_adicional, nota_adicional, fecha_envio, fecha_revision, texto_respuesta, comentario_padrino, evidencias_archivos(*)')
+          .eq('estudiante_id', estudiante.id)
+        return incluirAdicionales ? q : q.eq('es_adicional', false)
+      })(),
       supabase.from('insignias_obtenidas').select('nivel_id').eq('estudiante_id', estudiante.id)
     ])
 
@@ -288,7 +291,12 @@ export function EstudianteDetalleModal({ estudiante, onClose }) {
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${est.cls} whitespace-nowrap`}>
                                     {est.icon} {est.label}
                                   </span>
-                                  {reto.evidencia?.estado === 'aprobado' && (
+                                  {reto.evidencia?.es_adicional && (
+                                    <span className="text-[10px] text-amber-700 font-bold">
+                                      Adicional{reto.evidencia.estado === 'aprobado' ? ` · nota ${reto.evidencia.nota_adicional ?? '—'}/100 (no suma)` : ' (no suma)'}
+                                    </span>
+                                  )}
+                                  {reto.evidencia?.estado === 'aprobado' && !reto.evidencia.es_adicional && (
                                     <span className="text-[10px] text-[#6b4c3a] font-bold">+{reto.evidencia.puntuacion || 0} pts</span>
                                   )}
                                   {tieneContenido && (

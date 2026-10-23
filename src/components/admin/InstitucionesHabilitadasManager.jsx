@@ -5,24 +5,26 @@ import toast from 'react-hot-toast'
 // Instituciones que pueden seguir enviando evidencias tras el cierre del concurso.
 // Una institución está habilitada si tiene al menos un padrino asignado.
 export function InstitucionesHabilitadasManager() {
+  const [municipios, setMunicipios] = useState([])
   const [instituciones, setInstituciones] = useState([])
   const [padrinos, setPadrinos] = useState([])
   const [filas, setFilas] = useState([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ institucion_id: '', padrino_user_id: '' })
+  const [form, setForm] = useState({ municipio_id: '', institucion_id: '', padrino_user_id: '' })
 
   useEffect(() => { cargar() }, [])
 
   async function cargar() {
     setLoading(true)
-    const [inst, pad, hab] = await Promise.all([
-      supabase.from('instituciones').select('id, nombre').order('nombre'),
+    const [mun, inst, pad, hab] = await Promise.all([
+      supabase.from('municipios').select('id, nombre').order('nombre'),
+      supabase.from('instituciones').select('id, nombre, municipio_id').order('nombre'),
       supabase.from('padrinos').select('user_id, nombre').eq('activo', true).order('nombre'),
       supabase.from('habilitaciones_institucion').select('id, institucion_id, padrino_user_id')
     ])
-    if (inst.error || pad.error || hab.error) {
-      toast.error('Error al cargar: ' + (inst.error || pad.error || hab.error).message)
-    }
+    const fallo = mun.error || inst.error || pad.error || hab.error
+    if (fallo) toast.error('Error al cargar: ' + fallo.message)
+    setMunicipios(mun.data || [])
     setInstituciones(inst.data || [])
     setPadrinos(pad.data || [])
     setFilas(hab.data || [])
@@ -44,7 +46,7 @@ export function InstitucionesHabilitadasManager() {
       return
     }
     toast.success('Institución habilitada')
-    setForm({ institucion_id: '', padrino_user_id: '' })
+    setForm({ municipio_id: '', institucion_id: '', padrino_user_id: '' })
     cargar()
   }
 
@@ -61,6 +63,8 @@ export function InstitucionesHabilitadasManager() {
   }
 
   const nombreInst = (id) => instituciones.find(i => i.id === id)?.nombre || `Institución ${id}`
+  const nombreMunicipio = (id) => municipios.find(m => m.id === instituciones.find(i => i.id === id)?.municipio_id)?.nombre
+  const institucionesDelMunicipio = instituciones.filter(i => String(i.municipio_id) === form.municipio_id)
   const nombrePadrino = (uid) => padrinos.find(p => p.user_id === uid)?.nombre || 'Padrino (inactivo o eliminado)'
 
   const porInstitucion = filas.reduce((acc, f) => {
@@ -76,16 +80,28 @@ export function InstitucionesHabilitadasManager() {
         el estudiante, el docente de su institución y los padrinos asignados aquí.
       </div>
 
-      <form onSubmit={handleAsignar} className="bg-white rounded-2xl border border-[#e8dcca] p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+      <form onSubmit={handleAsignar} className="bg-white rounded-2xl border border-[#e8dcca] p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1">Municipio</label>
+          <select
+            value={form.municipio_id}
+            onChange={(e) => setForm(f => ({ ...f, municipio_id: e.target.value, institucion_id: '' }))}
+            className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl bg-[#faf7f3] text-[#4a3222]"
+          >
+            <option value="">Selecciona…</option>
+            {municipios.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+          </select>
+        </div>
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1">Institución</label>
           <select
             value={form.institucion_id}
             onChange={(e) => setForm(f => ({ ...f, institucion_id: e.target.value }))}
-            className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl bg-[#faf7f3] text-[#4a3222]"
+            disabled={!form.municipio_id}
+            className="w-full px-3 py-2 text-sm border border-[#e8dcca] rounded-xl bg-[#faf7f3] text-[#4a3222] disabled:opacity-50"
           >
-            <option value="">Selecciona…</option>
-            {instituciones.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}
+            <option value="">{form.municipio_id ? 'Selecciona…' : 'Primero elige el municipio'}</option>
+            {institucionesDelMunicipio.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}
           </select>
         </div>
         <div>
@@ -116,7 +132,7 @@ export function InstitucionesHabilitadasManager() {
             <div key={institucionId} className="bg-white rounded-2xl border border-[#e8dcca] p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-[#4a3222]">🏫 {nombreInst(Number(institucionId))}</p>
+                  <p className="font-semibold text-[#4a3222]">🏫 {nombreInst(Number(institucionId))}{nombreMunicipio(Number(institucionId)) && <span className="font-normal text-[#a68a64]"> · {nombreMunicipio(Number(institucionId))}</span>}</p>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mt-0.5">Envío habilitado</p>
                 </div>
                 <button onClick={() => deshabilitar(Number(institucionId))} className="text-xs text-red-600 hover:text-red-700 font-medium">

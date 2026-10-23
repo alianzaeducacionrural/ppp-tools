@@ -22,6 +22,8 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_ADMIN_EMAILS=correo1@ejemplo.com,correo2@ejemplo.com
 SUPABASE_SERVICE_ROLE_KEY=
+# Solo para npm run db:dump (Supabase → Connect → Session pooler, con la contraseña de la base de datos)
+SUPABASE_DB_URL=
 ```
 
 Las mismas variables deben estar en Vercel (Project Settings → Environment Variables).
@@ -42,7 +44,17 @@ Las mismas variables deben estar en Vercel (Project Settings → Environment Var
 
 ## Envío de evidencias tras el cierre
 
-Con `PLAZO_EVIDENCIAS_CERRADO = true`, el admin puede habilitar instituciones concretas desde la pestaña **Envío extra** ([InstitucionesHabilitadasManager.jsx](src/components/admin/InstitucionesHabilitadasManager.jsx)) y asignarles uno o más padrinos. Sus estudiantes siguen enviando evidencias que **no suman puntos** (se marcan `es_adicional` y la nota va en `nota_adicional`). El padrino las ve en el filtro "Tipo → Adicionales". La lógica de plazo está en [usePlazoEvidencias.js](src/hooks/usePlazoEvidencias.js). Requiere ejecutar antes [sql/habilitar-instituciones.sql](sql/habilitar-instituciones.sql) en Supabase.
+Con `PLAZO_EVIDENCIAS_CERRADO = true`, el admin puede habilitar instituciones concretas desde la pestaña **Envío extra** ([InstitucionesHabilitadasManager.jsx](src/components/admin/InstitucionesHabilitadasManager.jsx)) y asignarles uno o más padrinos. Sus estudiantes siguen enviando evidencias que **no suman puntos** (se marcan `es_adicional` y la nota va en `nota_adicional`). El padrino las ve en el filtro "Tipo → Adicionales". La lógica de plazo está en [usePlazoEvidencias.js](src/hooks/usePlazoEvidencias.js). Requiere la migración [supabase/migraciones/2026-10-23_habilitar-instituciones.sql](supabase/migraciones/2026-10-23_habilitar-instituciones.sql) (ya aplicada en producción). La visibilidad se restringe con [2026-10-23_rls-evidencias-adicionales.sql](supabase/migraciones/2026-10-23_rls-evidencias-adicionales.sql) (políticas RLS restrictivas: solo el estudiante, el docente de su institución, los padrinos asignados y el admin). El docente ve las notas adicionales al abrir el detalle de un estudiante.
+
+## Base de datos (Supabase)
+
+El esquema se versiona en [supabase/](supabase/):
+
+- `supabase/esquema.sql`: tablas, restricciones, funciones, triggers y políticas RLS del esquema `public`.
+- `supabase/storage.sql`: buckets (`evidencias`, `proyectos-dirigidos`) y sus políticas.
+- `supabase/migraciones/`: cambios aplicados a mano en el SQL Editor, con fecha en el nombre.
+
+Para regenerar los dos primeros tras cualquier cambio en el panel de Supabase: `npm run db:dump` (requiere `SUPABASE_DB_URL` en `.env` y `pg_dump`/`psql` instalados), y hacer commit del resultado. Cada cambio nuevo de esquema va también como archivo en `supabase/migraciones/`.
 
 ## API serverless (Vercel)
 
