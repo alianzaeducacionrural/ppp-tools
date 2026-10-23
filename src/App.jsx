@@ -10,6 +10,7 @@ import DashboardPadrino from './components/padrino/DashboardPadrino'
 import DashboardAdmin from './components/admin/DashboardAdmin'
 import DashboardDocente from './components/docente/DashboardDocente'
 import { PlazoCerradoModal, PLAZO_EVIDENCIAS_CERRADO } from './components/comunes/PlazoCerradoModal'
+import { usePlazoEvidencias } from './hooks/usePlazoEvidencias'
 
 function LoadingScreen() {
   return (
@@ -96,6 +97,7 @@ function SinRolScreen() {
 
 function AppRoutes() {
   const { user, rol, loading } = useAuth()
+  const plazo = usePlazoEvidencias()
 
   if (loading) {
     return <LoadingScreen />
@@ -114,7 +116,7 @@ function AppRoutes() {
 
   return (
     <>
-    {PLAZO_EVIDENCIAS_CERRADO && (rol === 'estudiante' || rol === 'docente') && <PlazoCerradoModal />}
+    {PLAZO_EVIDENCIAS_CERRADO && (rol === 'docente' || (rol === 'estudiante' && !plazo.cargando && plazo.cerrado)) && <PlazoCerradoModal />}
     <Routes>
       {/* Rutas públicas */}
       <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />

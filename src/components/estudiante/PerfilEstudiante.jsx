@@ -32,7 +32,7 @@ export function PerfilEstudiante({ estudiante, onActualizar, puntuacionTotal, ni
 
   async function cargarEstadisticas() {
     const [{ data: evidencias }, { count: insigniasCount }] = await Promise.all([
-      supabase.from('evidencias').select('puntuacion').eq('estudiante_id', estudiante?.id).eq('estado', 'aprobado'),
+      supabase.from('evidencias').select('puntuacion').eq('estudiante_id', estudiante?.id).eq('estado', 'aprobado').eq('es_adicional', false),
       supabase.from('insignias_obtenidas').select('*', { count: 'exact', head: true }).eq('estudiante_id', estudiante?.id)
     ])
     const retosCompletados = evidencias?.length || 0

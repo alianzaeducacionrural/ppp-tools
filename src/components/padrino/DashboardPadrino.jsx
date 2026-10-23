@@ -23,8 +23,12 @@ function DashboardEvidencias({ onRefresh }) {
     estado: 'pendiente',
     grado: '',
     tipo_proyecto: '',
-    municipio: ''
+    municipio: '',
+    tipo: 'concurso'
   })
+  const { user } = useAuth()
+  // Instituciones que el admin asignó a este padrino para evidencias tras el cierre
+  const [institucionesAsignadas, setInstitucionesAsignadas] = useState([])
   const [stats, setStats] = useState({ pendientes: 0, aprobadas: 0, rechazadas: 0 })
   const [municipios, setMunicipios] = useState([])
 
@@ -33,8 +37,14 @@ function DashboardEvidencias({ onRefresh }) {
   }, [])
 
   useEffect(() => {
+    if (!user) return
+    supabase.from('habilitaciones_institucion').select('institucion_id').eq('padrino_user_id', user.id)
+      .then(({ data }) => setInstitucionesAsignadas((data || []).map(h => h.institucion_id)))
+  }, [user])
+
+  useEffect(() => {
     cargarEvidencias()
-  }, [filtros])
+  }, [filtros, institucionesAsignadas])
 
   async function cargarMunicipios() {
     const { data } = await supabase.from('municipios').select('id, nombre').order('nombre')
@@ -46,7 +56,7 @@ function DashboardEvidencias({ onRefresh }) {
   // mientras se revisaban las pendientes.
   async function cargarStats() {
     const contar = (estado) =>
-      supabase.from('evidencias').select('id', { count: 'exact', head: true }).eq('estado', estado)
+      supabase.from('evidencias').select('id', { count: 'exact', head: true }).eq('estado', estado).eq('es_adicional', false)
 
     const [pendientes, aprobadas, rechazadas] = await Promise.all([
       contar('pendiente'), contar('aprobado'), contar('rechazado')
@@ -67,6 +77,7 @@ function DashboardEvidencias({ onRefresh }) {
       let query = supabase
         .from('evidencias')
         .select('*')
+        .eq('es_adicional', filtros.tipo === 'adicional')
         .order('fecha_envio', { ascending: false })
 
       if (filtros.estado) {
@@ -143,6 +154,8 @@ function DashboardEvidencias({ onRefresh }) {
           evidencias_archivos: archivosMap[ev.id] || []
         }))
         .filter(ev => ev.estudiante != null)
+        // Las adicionales solo las ve el padrino asignado a la institución del estudiante
+        .filter(ev => filtros.tipo !== 'adicional' || institucionesAsignadas.includes(ev.estudiante.institucion_id))
 
       // Aplicar filtros adicionales
       let filtradas = evidenciasCompletas
@@ -233,6 +246,19 @@ function DashboardEvidencias({ onRefresh }) {
               </select>
             </div>
           ))}
+          {institucionesAsignadas.length > 0 && (
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1">Tipo</label>
+              <select
+                value={filtros.tipo}
+                onChange={(e) => setFiltros(prev => ({ ...prev, tipo: e.target.value }))}
+                className="w-full px-3 py-2 text-xs border border-[#e8dcca] rounded-xl bg-[#faf7f3] text-[#4a3222] focus:outline-none focus:ring-2 focus:ring-[#6b4c3a] transition"
+              >
+                <option value="concurso">🏆 Del concurso</option>
+                <option value="adicional">➕ Adicionales (sin puntos)</option>
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-widest text-[#a68a64] mb-1">Municipio</label>
             <select
@@ -247,7 +273,7 @@ function DashboardEvidencias({ onRefresh }) {
         </div>
         <div className="flex justify-between items-center mt-3 pt-3 border-t border-[#f5efe6]">
           <button
-            onClick={() => setFiltros({ estado: 'pendiente', grado: '', tipo_proyecto: '', municipio: '' })}
+            onClick={() => setFiltros({ estado: 'pendiente', grado: '', tipo_proyecto: '', municipio: '', tipo: 'concurso' })}
             className="text-xs text-[#6b4c3a] hover:text-[#4a3222] transition font-medium"
           >
             Limpiar filtros
@@ -297,7 +323,9 @@ function DashboardEvidencias({ onRefresh }) {
 // COMPONENTE TARJETA EVIDENCIA
 // ==========================================
 function TarjetaEvidencia({ evidencia, onActualizar }) {
-  const [puntuacion, setPuntuacion] = useState(evidencia.puntuacion || '')
+  // Las adicionales guardan su nota en otra columna para no sumar puntos
+  const campoNota = evidencia.es_adicional ? 'nota_adicional' : 'puntuacion'
+  const [puntuacion, setPuntuacion] = useState(evidencia[campoNota] || '')
   const [comentario, setComentario] = useState(evidencia.comentario_padrino || '')
   const [loading, setLoading] = useState(false)
   const [comentarioError, setComentarioError] = useState(false)
@@ -336,7 +364,7 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
       .from('evidencias')
       .update({
         estado: 'aprobado',
-        puntuacion: puntuacionNum,
+        [campoNota]: puntuacionNum,
         comentario_padrino: comentario || null,
         fecha_revision: new Date().toISOString(),
         padrino_id: userData.user?.id
@@ -416,14 +444,14 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
       return
     }
 
-    let nuevaPuntuacion = evidencia.puntuacion
+    let nuevaPuntuacion = evidencia[campoNota]
     if (evidencia.estado === 'aprobado') {
       const puntuacionNum = parseInt(puntuacion)
       if (isNaN(puntuacionNum) || puntuacionNum < 0 || puntuacionNum > 100) {
         toast.error('La puntuación debe estar entre 0 y 100')
         return
       }
-      cambios.puntuacion = puntuacionNum
+      cambios[campoNota] = puntuacionNum
       nuevaPuntuacion = puntuacionNum
     }
 
@@ -440,7 +468,7 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
     }
 
     // Si cambió la puntuación de una evidencia aprobada, recalcular el total.
-    if (evidencia.estado === 'aprobado' && nuevaPuntuacion !== evidencia.puntuacion) {
+    if (evidencia.estado === 'aprobado' && nuevaPuntuacion !== evidencia[campoNota]) {
       const { data: aprobadas } = await supabase
         .from('evidencias')
         .select('puntuacion')
@@ -458,7 +486,7 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
 
   function cancelarEdicion() {
     setComentario(evidencia.comentario_padrino || '')
-    setPuntuacion(evidencia.puntuacion || '')
+    setPuntuacion(evidencia[campoNota] || '')
     setComentarioError(false)
     setEditando(false)
   }
@@ -701,8 +729,8 @@ function TarjetaEvidencia({ evidencia, onActualizar }) {
                 {evidencia.comentario_padrino
                   ? <p className="text-xs text-[#6b4c3a] leading-relaxed">{evidencia.comentario_padrino}</p>
                   : <p className="text-xs text-[#a68a64] italic">Sin comentario</p>}
-                {evidencia.puntuacion != null && (
-                  <p className="text-xs font-semibold text-emerald-700 mt-2">⭐ Puntuación: {evidencia.puntuacion}/100</p>
+                {evidencia[campoNota] != null && (
+                  <p className="text-xs font-semibold text-emerald-700 mt-2">⭐ {evidencia.es_adicional ? 'Nota (no suma)' : 'Puntuación'}: {evidencia[campoNota]}/100</p>
                 )}
                 {evidencia.fecha_revision && (
                   <p className="text-[10px] text-[#a68a64] mt-1">

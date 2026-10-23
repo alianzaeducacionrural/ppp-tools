@@ -18,7 +18,7 @@ export function EstadisticasPadrino() {
         { data: estudiantesPorGrado }
       ] = await Promise.all([
         supabase.from('estudiantes').select('*', { count: 'exact', head: true }),
-        supabase.from('evidencias').select('estado, puntuacion, fecha_envio'),
+        supabase.from('evidencias').select('estado, puntuacion, fecha_envio').eq('es_adicional', false),
         supabase.from('estudiantes').select('grado, id')
       ])
 

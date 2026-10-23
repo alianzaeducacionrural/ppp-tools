@@ -12,7 +12,8 @@ import { AyudaEstudiante } from './AyudaEstudiante'
 import { useEvidenciaNotification } from '../comunes/NotificationToast'
 import { RecomendacionesVideoModal } from '../comunes/RecomendacionesVideoModal'
 import { procesarImagenes } from '../../lib/imagenes'
-import { PLAZO_EVIDENCIAS_CERRADO, MENSAJE_PLAZO_CERRADO } from '../comunes/PlazoCerradoModal'
+import { MENSAJE_PLAZO_CERRADO } from '../comunes/PlazoCerradoModal'
+import { usePlazoEvidencias } from '../../hooks/usePlazoEvidencias'
 import { obtenerRango } from '../../data/rangos'
 
 function DashboardEstudianteGamificado() {
@@ -166,7 +167,7 @@ function DashboardEstudianteGamificado() {
       const nivelIdsParaRetos = (cacheNiveles.current || []).map(n => n.id)
       const [{ data: insigniasData }, { data: evAprobadas }, { count: totalRetosCount }] = await Promise.all([
         supabase.from('insignias_obtenidas').select('nivel_id').eq('estudiante_id', estudianteData.id),
-        supabase.from('evidencias').select('puntuacion').eq('estudiante_id', estudianteData.id).eq('estado', 'aprobado'),
+        supabase.from('evidencias').select('puntuacion').eq('estudiante_id', estudianteData.id).eq('estado', 'aprobado').eq('es_adicional', false),
         nivelIdsParaRetos.length
           ? supabase.from('retos').select('*', { count: 'exact', head: true }).in('nivel_id', nivelIdsParaRetos)
           : Promise.resolve({ count: 0 })
@@ -766,6 +767,8 @@ function RetoCard({ reto, orden, estudianteId, onActualizar }) {
 // FORMULARIO EVIDENCIA
 // ==========================================
 function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado }) {
+  // Institución habilitada tras el cierre: se envía como evidencia adicional (no suma puntos).
+  const { cerrado: plazoCerrado, adicional } = usePlazoEvidencias()
   const [texto, setTexto] = useState(evidenciaExistente?.texto_respuesta || '')
   const [archivos, setArchivos] = useState([])
   const [loading, setLoading] = useState(false)
@@ -930,7 +933,7 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
   async function handleSubmit(e) {
     e.preventDefault()
     if (enviandoRef.current) return
-    if (PLAZO_EVIDENCIAS_CERRADO) {
+    if (plazoCerrado) {
       toast.error(MENSAJE_PLAZO_CERRADO)
       return
     }
@@ -956,7 +959,9 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
         puntuacion: null,
         comentario_padrino: null,
         fecha_revision: null,
-        fecha_envio: new Date().toISOString()
+        fecha_envio: new Date().toISOString(),
+        // Solo se envían estas columnas en modo adicional: así el envío normal no depende de ellas.
+        ...(adicional && { es_adicional: true, nota_adicional: null })
       }
 
       setProgreso('Guardando tu evidencia...')
@@ -1185,14 +1190,20 @@ function FormularioEvidencia({ reto, estudianteId, evidenciaExistente, onEnviado
         </div>
       )}
 
+      {adicional && (
+        <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          ℹ️ El concurso ya cerró. Esta evidencia se envía a tu docente y no suma puntos.
+        </p>
+      )}
+
       <div className="flex gap-2 pt-1">
         <button
           type="submit"
-          disabled={loading || procesando || PLAZO_EVIDENCIAS_CERRADO}
-          title={PLAZO_EVIDENCIAS_CERRADO ? MENSAJE_PLAZO_CERRADO : undefined}
+          disabled={loading || procesando || plazoCerrado}
+          title={plazoCerrado ? MENSAJE_PLAZO_CERRADO : undefined}
           className="flex-1 bg-[#6b4c3a] hover:bg-[#4a3222] disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2"
         >
-          {PLAZO_EVIDENCIAS_CERRADO ? (
+          {plazoCerrado ? (
             <>
               <span>🔒</span>
               <span>Plazo finalizado</span>

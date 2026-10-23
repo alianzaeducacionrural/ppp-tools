@@ -71,6 +71,7 @@ export function ReportesExport() {
         .from('evidencias')
         .select('id, estado, puntuacion, fecha_envio, estudiante_id, retos!reto_id(texto, niveles!nivel_id(nombre, numero_nivel))')
         .in('estudiante_id', estudianteIds)
+        .eq('es_adicional', false)
 
       if (evError) throw evError
 

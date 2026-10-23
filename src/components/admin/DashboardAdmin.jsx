@@ -8,6 +8,7 @@ import { EstudiantesManager } from './EstudiantesManager'
 import { PadrinosManager } from './PadrinosManager'
 import { DocentesManager } from './DocentesManager'
 import { ReportesExport } from './ReportesExport'
+import { InstitucionesHabilitadasManager } from './InstitucionesHabilitadasManager'
 import { RankingParticipantes } from '../comunes/RankingParticipantes'
 
 const menuItems = [
@@ -17,6 +18,7 @@ const menuItems = [
   { id: 'estudiantes', label: 'Estudiantes',icono: '👨‍🎓', descripcion: 'Ver estudiantes' },
   { id: 'padrinos',    label: 'Padrinos',   icono: '👥', descripcion: 'Gestionar padrinos' },
   { id: 'docentes',    label: 'Docentes',   icono: '🌱', descripcion: 'Gestionar docentes' },
+  { id: 'habilitadas', label: 'Envío extra',icono: '🔓', descripcion: 'Habilitar instituciones tras el cierre' },
   { id: 'reportes',    label: 'Reportes',   icono: '📄', descripcion: 'Exportar datos' },
 ]
 
@@ -200,8 +202,8 @@ function DashboardAdmin() {
         { count: retosCount }
       ] = await Promise.all([
         supabase.from('estudiantes').select('*', { count: 'exact', head: true }),
-        supabase.from('evidencias').select('*', { count: 'exact', head: true }),
-        supabase.from('evidencias').select('*', { count: 'exact', head: true }).eq('estado', 'pendiente'),
+        supabase.from('evidencias').select('*', { count: 'exact', head: true }).eq('es_adicional', false),
+        supabase.from('evidencias').select('*', { count: 'exact', head: true }).eq('estado', 'pendiente').eq('es_adicional', false),
         supabase.from('padrinos').select('*', { count: 'exact', head: true }),
         supabase.from('niveles').select('*', { count: 'exact', head: true }),
         supabase.from('retos').select('*', { count: 'exact', head: true }),
@@ -239,6 +241,7 @@ function DashboardAdmin() {
     estudiantes: { titulo: '👨‍🎓 Estudiantes', sub: 'Listado y gestión de estudiantes registrados' },
     padrinos:    { titulo: '👥 Padrinos', sub: 'Gestiona los padrinos colaboradores' },
     docentes:    { titulo: '🌱 Docentes', sub: 'Gestiona los docentes y sus proyectos dirigidos' },
+    habilitadas: { titulo: '🔓 Envío tras el cierre', sub: 'Habilita instituciones para seguir enviando evidencias sin sumar puntos' },
     reportes:    { titulo: '📄 Reportes', sub: 'Exporta datos del programa a Excel' },
   }
 
@@ -272,6 +275,7 @@ function DashboardAdmin() {
             {activeTab === 'estudiantes' && <EstudiantesManager />}
             {activeTab === 'padrinos'    && <PadrinosManager />}
             {activeTab === 'docentes'    && <DocentesManager />}
+            {activeTab === 'habilitadas' && <InstitucionesHabilitadasManager />}
             {activeTab === 'reportes'    && <ReportesExport />}
           </div>
         </div>
@@ -297,6 +301,7 @@ function DashboardStats({ stats, loading, onRefresh }) {
     const { data: evidencias } = await supabase
       .from('evidencias')
       .select('*')
+      .eq('es_adicional', false)
       .order('fecha_envio', { ascending: false })
       .limit(10)
 

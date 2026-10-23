@@ -115,7 +115,8 @@ export function EstudianteDetalleModal({ estudiante, onClose }) {
         : Promise.resolve({ data: [] }),
       supabase.from('evidencias')
         .select('id, reto_id, estado, puntuacion, fecha_envio, fecha_revision, texto_respuesta, comentario_padrino, evidencias_archivos(*)')
-        .eq('estudiante_id', estudiante.id),
+        .eq('estudiante_id', estudiante.id)
+        .eq('es_adicional', false),
       supabase.from('insignias_obtenidas').select('nivel_id').eq('estudiante_id', estudiante.id)
     ])
 
